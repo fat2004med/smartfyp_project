@@ -25,86 +25,53 @@ import Department from "../models/Department.js";
 
 dotenv.config();
 
-// Validate Environment Variables on Startup
-function validateEnv() {
-  const missing = [];
-  if (!process.env.MONGODB_URI && !process.env.MONGO_URI) missing.push("MONGODB_URI (or MONGO_URI)");
-  if (!process.env.JWT_SECRET) missing.push("JWT_SECRET");
-
-  if (missing.length > 0) {
-    console.warn(
-      `\x1b[33m⚠️ WARNING: Missing recommended environment variables on Vercel: ${missing.join(", ")}\x1b[0m`
-    );
-  } else {
-    console.log("✅ Environment variable validation passed.");
-  }
-}
-validateEnv();
-
-// Initialize recommender system safely
+// Try to initialize recommender safely without throwing on read-only environments
 try {
-  if (!recommender.isTrained) {
+  if (recommender && !recommender.isTrained) {
     recommender.train();
   }
 } catch (e) {
-  console.warn("Recommender training warning:", e.message);
+  console.warn("Recommender training note:", e.message);
 }
 
 const app = express();
 
-// Trust proxy for Vercel edge/serverless routing
 app.set("trust proxy", 1);
 
-// Robust CORS configuration for Vercel
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:5173",
-  "http://localhost:4173",
-  process.env.VITE_API_URL,
-  process.env.FRONTEND_URL,
-].filter(Boolean);
-
+// CORS for Vercel Serverless
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, server-to-server) or Vercel preview URLs
-      if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
-        callback(null, true);
-      } else {
-        callback(null, true); // Permissive fallback for standard SPA requests
-      }
-    },
+    origin: true, // Echo origin to allow credentials
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Selected-Role", "X-Requested-With", "Accept"],
   })
 );
 
-// Handle preflight across all routes
 app.options("*", cors());
 
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
-// Serverless DB Connection Middleware (connects on-demand per request)
+// Serverless Database Connection Middleware
 app.use(async (req, res, next) => {
   try {
     await connectDB();
   } catch (err) {
-    console.error("Database connection error in serverless request:", err.message);
+    console.error("Database connection warning in request:", err.message);
   }
   next();
 });
 
-// Diagnostic / Debug Endpoint: /api/test
-app.get("/api/test", async (req, res) => {
+// Diagnostic / Debug Endpoints (handles both /api/test and /test in case Vercel rewrites strip prefix)
+const handleTest = async (req, res) => {
   const dbConnected = getDBStatus();
   res.status(200).json({
     success: true,
-    message: "Backend API is online and communicating successfully with Vercel serverless function!",
+    message: "Backend API is online and communicating successfully!",
     timestamp: new Date().toISOString(),
     environment: {
-      NODE_ENV: process.env.NODE_ENV || "development",
+      NODE_ENV: process.env.NODE_ENV || "production",
       hasMongoUri: Boolean(process.env.MONGODB_URI || process.env.MONGO_URI),
       hasJwtSecret: Boolean(process.env.JWT_SECRET),
       hasViteApiUrl: Boolean(process.env.VITE_API_URL),
@@ -114,10 +81,13 @@ app.get("/api/test", async (req, res) => {
       status: dbConnected ? "Connected to MongoDB Atlas" : "Disconnected / Checking credentials",
     },
   });
-});
+};
 
-// System Health Endpoint: /api/health
-app.get("/api/health", async (req, res) => {
+app.get("/api/test", handleTest);
+app.get("/test", handleTest);
+
+// Health Check Endpoints
+const handleHealth = async (req, res) => {
   const isDbReady = getDBStatus();
   let counts = { projects: 0, users: 0, departments: 0 };
   let dbError = null;
@@ -141,24 +111,13 @@ app.get("/api/health", async (req, res) => {
     timestamp: new Date().toISOString(),
     counts,
   });
-});
+};
 
-// Register API Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/departments", departmentRoutes);
-app.use("/api/projects", projectRoutes);
-app.use("/api/submissions", submissionRoutes);
-app.use("/api/tasks", taskRoutes);
-app.use("/api/announcements", announcementRoutes);
-app.use("/api/templates", templateRoutes);
-app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/assignments", assignmentRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/plagiarism", plagiarismRoutes);
+app.get("/api/health", handleHealth);
+app.get("/health", handleHealth);
 
-// Register Public Contact Form Endpoint
-app.post("/api/contact", async (req, res, next) => {
+// Contact Message Handler
+const handleContact = async (req, res, next) => {
   try {
     const { name, email, subject, message } = req.body;
     if (!name || !email || !subject || !message) {
@@ -192,21 +151,18 @@ app.post("/api/contact", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
+};
 
-// Project Recommendation Engine API
-app.post("/api/recommendations", async (req, res, next) => {
+app.post("/api/contact", handleContact);
+app.post("/contact", handleContact);
+
+// Recommendations Handler
+const handleRecommendations = async (req, res, next) => {
   try {
     const { query, domain, techStack, limit } = req.body;
 
     if (!recommender.isTrained) {
-      const trained = recommender.train();
-      if (!trained) {
-        return res.status(500).json({
-          success: false,
-          message: "Recommender system model is not yet trained or loaded.",
-        });
-      }
+      recommender.train();
     }
 
     const results = recommender.getRecommendations(
@@ -225,9 +181,33 @@ app.post("/api/recommendations", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+app.post("/api/recommendations", handleRecommendations);
+app.post("/recommendations", handleRecommendations);
+
+// Register Main API Routes (both with /api prefix and without /api prefix for maximum compatibility)
+const routeModules = [
+  { path: "auth", router: authRoutes },
+  { path: "users", router: userRoutes },
+  { path: "departments", router: departmentRoutes },
+  { path: "projects", router: projectRoutes },
+  { path: "submissions", router: submissionRoutes },
+  { path: "tasks", router: taskRoutes },
+  { path: "announcements", router: announcementRoutes },
+  { path: "templates", router: templateRoutes },
+  { path: "dashboard", router: dashboardRoutes },
+  { path: "assignments", router: assignmentRoutes },
+  { path: "notifications", router: notificationRoutes },
+  { path: "plagiarism", router: plagiarismRoutes },
+];
+
+routeModules.forEach(({ path, router }) => {
+  app.use(`/api/${path}`, router);
+  app.use(`/${path}`, router);
 });
 
-// Global Error Handler Middleware
+// Global Error Handler
 app.use(errorHandler);
 
 export default app;

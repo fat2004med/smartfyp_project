@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Activity, 
   CheckCircle2, 
@@ -12,7 +12,6 @@ import {
   Copy, 
   Check, 
   ChevronDown, 
-  ChevronUp,
   LogIn
 } from 'lucide-react';
 import api, { testApiConnection, checkHealth, API_BASE_URL } from '../services/api';

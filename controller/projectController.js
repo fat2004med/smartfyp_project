@@ -334,13 +334,19 @@ export const getTeamProject = async (req, res) => {
 
 export const getPublicProjects = async (req, res) => {
   try {
-    const projects = await Project.find({ isPublic: true })
-      .populate("department", "name")
+    const projects = await Project.find({
+      $or: [
+        { isPublic: true },
+        { status: { $in: ["Completed", "Published"] } }
+      ]
+    })
+      .populate("department", "name code")
       .populate("supervisor", "name email phone interests")
       .populate("teamLeader", "name email role phone")
       .populate("members", "name email role phone");
-    res.json(projects);
+    res.json(projects || []);
   } catch (error) {
+    console.error("Error in getPublicProjects:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -624,3 +630,4 @@ export const publishProject = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+

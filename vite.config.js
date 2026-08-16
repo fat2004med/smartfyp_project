@@ -23,7 +23,12 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        'react-is': path.resolve(__dirname, 'node_modules/react-is'),
       },
+      dedupe: ['react', 'react-dom', 'react-is'],
+    },
+    optimizeDeps: {
+      include: ['recharts', 'react-is'],
     },
     build: {
       outDir: 'dist',
@@ -32,11 +37,20 @@ export default defineConfig(({ mode }) => {
       minify: 'esbuild',
       target: 'es2020',
       chunkSizeWarningLimit: 2500,
+      commonjsOptions: {
+        include: [/node_modules/],
+        transformMixedEsModules: true,
+      },
       rollupOptions: {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
-              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+              if (
+                id.includes('react') ||
+                id.includes('react-dom') ||
+                id.includes('react-router-dom') ||
+                id.includes('react-is')
+              ) {
                 return 'vendor-react';
               }
               if (id.includes('lucide-react') || id.includes('motion')) {

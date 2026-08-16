@@ -1064,14 +1064,20 @@ async function startServer() {
       root: path.resolve(__dirname, "."),
     });
     app.use(vite.middlewares);
-      } else {
-    console.log("Running in Production Mode (API Only)...");
+        } else {
+    console.log("Serving static production build from /dist...");
+    const distPath = path.resolve(__dirname, "dist");
+    
+    // Serve build assets from /dist
+    app.use(express.static(distPath));
 
-    // Root endpoint health check
-    app.get("/", (req, res) => {
-      res.status(200).json({ message: "SmartFYP API is running successfully!" });
+    // Route all non-API requests to index.html (SPA Fallback)
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith('/api')) return next();
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
+
 
 
 

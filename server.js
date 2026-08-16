@@ -1009,6 +1009,26 @@ async function startServer() {
     }
   });
 
+  // Diagnostic / Debug Endpoint: /api/test
+  app.get("/api/test", async (req, res) => {
+    const dbConnected = getDBStatus();
+    res.status(200).json({
+      success: true,
+      message: "Backend API is online and communicating successfully!",
+      timestamp: new Date().toISOString(),
+      environment: {
+        NODE_ENV: process.env.NODE_ENV || "development",
+        hasMongoUri: Boolean(process.env.MONGODB_URI || process.env.MONGO_URI),
+        hasJwtSecret: Boolean(process.env.JWT_SECRET),
+        hasViteApiUrl: Boolean(process.env.VITE_API_URL),
+      },
+      database: {
+        connected: dbConnected,
+        status: dbConnected ? "Connected to MongoDB Atlas" : "Disconnected / Checking credentials",
+      },
+    });
+  });
+
   // Health check route - MUST be accessible immediately
   app.get("/api/health", async (req, res) => {
     let counts = { projects: 0, users: 0, depts: 0 };

@@ -3,27 +3,61 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-let isConnected = false;
+/**
+ * Global cache across serverless function warm executions in Node.js runtime
+ */
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
 const connectDB = async () => {
-  if (isConnected) {
-    return;
+  // Support both MONGODB_URI (standard Vercel/Atlas) and MONGO_URI
+  const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+
+  if (!uri) {
+    const errorMsg = "MongoDB URI not found! Please set MONGODB_URI or MONGO_URI in your Vercel Environment Variables.";
+    console.error(`\x1b[31m%s\x1b[0m`, `❌ ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
+
+  // If already connected, return existing connection
+  if (cached.conn && mongoose.connection.readyState === 1) {
+    return cached.conn;
+  }
+
+  // If a connection promise is in progress, await it
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false, // Fail fast on operations if disconnected
+      serverSelectionTimeoutMS: 10000, // 10s timeout to prevent serverless hang
+      socketTimeoutMS: 45000,
+    };
+
+    console.log("🔄 Initializing new MongoDB connection pool...");
+    cached.promise = mongoose.connect(uri, opts).then((mongooseInstance) => {
+      console.log(`\x1b[32m%s\x1b[0m`, `✅ MongoDB Connected: ${mongooseInstance.connection.host}`);
+      return mongooseInstance;
+    }).catch((err) => {
+      cached.promise = null;
+      console.error(`\x1b[31m%s\x1b[0m`, `❌ MongoDB Connection Failed: ${err.message}`);
+      throw err;
+    });
   }
 
   try {
-    if (!process.env.MONGO_URI) {
-      throw new Error("MONGO_URI is not defined in environment variables");
-    }
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-    isConnected = true;
-    console.log(`\x1b[32m%s\x1b[0m`, `✅ MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`\x1b[31m%s\x1b[0m`, `❌ Error connecting to MongoDB: ${error.message}`);
-    // Don't exit process, allow the app to run in disconnected state if possible
-    // Or at least allow the server to remain alive
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
   }
+
+  return cached.conn;
 };
 
-export const getDBStatus = () => isConnected;
+export const getDBStatus = () => {
+  return Boolean(mongoose.connection && mongoose.connection.readyState === 1);
+};
 
 export default connectDB;

@@ -95,118 +95,9 @@ const AnimatedSelect = ({ label, value, options, onChange }) => {
   );
 };
 
-export const projectsData = [
-  {
-    id: 1,
-    title: "AI-Powered Healthcare Diagnosis System",
-    description: "Machine learning system for early disease detection using medical imaging and patient data analysis.",
-    abstract: "This project develops an AI-powered diagnostic system that can analyze medical images and patient data to provide early detection of various diseases. The system uses deep learning algorithms to process X-rays, MRIs, and CT scans with 95% accuracy.",
-    department: "Computer Science & Engineering",
-    status: "Completed",
-    year: "2024",
-    teamName: "Team Alpha",
-    teamLeader: "Sarah Johnson",
-    teamMembers: ["Sarah Johnson", "Mike Chen", "Priya Patel", "Alex Rodriguez"],
-    supervisor: "Dr. Emily Watson",
-    hod: "Prof. Mohtashim",
-    duration: "8 months",
-    grade: "A+",
-    technologies: ["Python", "TensorFlow", "OpenCV", "Flask", "PostgreSQL"],
-    image: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 2,
-    title: "Smart Campus IoT Infrastructure",
-    description: "Comprehensive IoT network for campus automation, energy management, and security monitoring.",
-    abstract: "A modular IoT framework designed to transform traditional campuses into smart environments. It includes automated lighting, temperature control, and real-time security alerts integrated into a central dashboard.",
-    department: "Electronics & Communication",
-    status: "Completed",
-    year: "2024",
-    teamName: "Team Beta",
-    teamLeader: "David Kim",
-    teamMembers: ["David Kim", "Emma Davis", "Lucas Brown"],
-    supervisor: "Prof. Hina Rahat",
-    hod: "Prof. Mohtashim",
-    duration: "6 months",
-    grade: "A",
-    technologies: ["Arduino", "Raspberry Pi", "LoRaWAN", "Node.js", "MQTT"],
-    image: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 3,
-    title: "Renewable Energy Optimization Platform",
-    description: "Predictive analytics system for optimizing renewable energy generation and distribution.",
-    abstract: "An advanced software solution that uses weather forecasting and historical data to predict solar and wind energy output, helping grid managers optimize distribution and reduce waste.",
-    department: "Mechanical Engineering",
-    status: "Completed",
-    year: "2023",
-    teamName: "Team Gamma",
-    teamLeader: "James Wilson",
-    teamMembers: ["James Wilson", "Sophie Turner", "Robert Miller"],
-    supervisor: "Dr. Michael Chen",
-    hod: "Prof. Mohtashim",
-    duration: "7 months",
-    grade: "A",
-    technologies: ["MATLAB", "Simulink", "Python", "AWS", "D3.js"],
-    image: "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 4,
-    title: "Structural Health Monitoring System",
-    description: "Real-time monitoring system for detecting structural damage in bridges and buildings.",
-    abstract: "Using wireless sensor networks, this system monitors vibration and strain in large structures to detect early signs of fatigue or damage, significantly improving public safety.",
-    department: "Civil Engineering",
-    status: "In Progress",
-    year: "2024",
-    teamName: "Team Delta",
-    teamLeader: "Anna Lee",
-    teamMembers: ["Anna Lee", "Chris Evans", "Mark Ruffalo"],
-    supervisor: "Prof. Nabeel",
-    hod: "Prof. Mohtashim",
-    duration: "Ongoing",
-    grade: "Pending",
-    technologies: ["Sensors", "LabVIEW", "C++", "Wireless Mesh"],
-    image: "https://images.unsplash.com/photo-1584467541268-b040f83be3fd?auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 5,
-    title: "Blockchain-Based Supply Chain Management",
-    description: "Transparent and secure supply chain tracking using blockchain technology.",
-    abstract: "A decentralized platform that provides end-to-end visibility in the supply chain, ensuring product authenticity and reducing fraud through immutable ledger records.",
-    department: "Information Technology",
-    status: "Completed",
-    year: "2023",
-    teamName: "Team Epsilon",
-    teamLeader: "Kevin Liu",
-    teamMembers: ["Kevin Liu", "Andrew Wilson", "Jessica Alba"],
-    supervisor: "Prof. Sarah",
-    hod: "Prof. Mohtashim",
-    duration: "9 months",
-    grade: "A+",
-    technologies: ["Solidity", "Ethereum", "Web3.js", "React", "IPFS"],
-    image: "https://images.unsplash.com/photo-1561414927-6d86591d0c4f?auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: 6,
-    title: "Smart Grid Power Management",
-    description: "Intelligent power grid system for efficient energy distribution and load balancing.",
-    abstract: "This project implements a smart grid controller that dynamically balances energy loads across a microgrid, integrating renewable sources and battery storage.",
-    department: "Electrical Engineering",
-    status: "In Progress",
-    year: "2024",
-    teamName: "Team Zeta",
-    teamLeader: "Mark Taylor",
-    teamMembers: ["Mark Taylor", "Sarah Johnson", "Ryan Cooper"],
-    supervisor: "Dr. Emily Watson",
-    hod: "Prof. Mohtashim",
-    duration: "Ongoing",
-    grade: "Pending",
-    technologies: ["SCADA", "PLC", "Python", "Modbus"],
-    image: "https://images.unsplash.com/photo-1548337138-e87d889cc369?auto=format&fit=crop&w=800&q=80"
-  }
-];
+export const projectsData = [];
 
-const ProjectCard = ({ project, onViewDetails, index }) => {
+export const ProjectCard = ({ project, onViewDetails, index = 0 }) => {
   const getGradient = (title) => {
     const gradients = [
       'from-blue-600 to-indigo-700',
@@ -216,9 +107,10 @@ const ProjectCard = ({ project, onViewDetails, index }) => {
       'from-rose-500 to-pink-700',
       'from-cyan-500 to-blue-700'
     ];
-    const index = (title?.length || 0) % gradients.length;
-    return gradients[index];
+    const idx = (title?.length || 0) % gradients.length;
+    return gradients[idx];
   };
+
 
   return (
     <motion.div 

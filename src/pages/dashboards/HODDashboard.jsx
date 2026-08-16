@@ -848,23 +848,21 @@ const HODDashboard = () => {
     };
 
     const isRoot = location.pathname === '/dashboard/hod' || location.pathname === '/dashboard/hod/';
-    if (isRoot || !statsData) {
-      fetchStats();
-      fetchAllProjects();
-    }
+    fetchStats();
+    fetchAllProjects();
 
     let intervalId;
     if (isRoot) {
       intervalId = setInterval(() => {
         fetchStats();
         fetchAllProjects();
-      }, 5000);
+      }, 8000);
     }
 
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [location.pathname, statsData]);
+  }, [location.pathname]);
 
   const deptPerformance = [
     { name: 'Active', value: statsData?.activeTeams ?? 0, color: '#3B82F6' },

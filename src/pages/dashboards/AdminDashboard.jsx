@@ -252,21 +252,19 @@ const AdminDashboard = () => {
     };
 
     const isRoot = location.pathname === '/dashboard/admin' || location.pathname === '/dashboard/admin/';
-    if (isRoot || !statsData) {
-      fetchStats();
-    }
+    fetchStats();
 
     let intervalId;
     if (isRoot) {
       intervalId = setInterval(() => {
         fetchStats();
-      }, 5000);
+      }, 8000);
     }
 
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [location.pathname, statsData]);
+  }, [location.pathname]);
 
   const stats = [
     { label: 'Total Departments', value: String(statsData?.totalDepts ?? 0), icon: GraduationCap, color: 'blue' },

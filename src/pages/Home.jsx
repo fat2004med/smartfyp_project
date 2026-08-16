@@ -14,12 +14,14 @@ import {
   Shield,
   Database,
   Brain,
-  LayoutDashboard
+  LayoutDashboard,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { ProjectModal, projectsData } from './Projects';
-import { useState } from 'react';
+import axios from 'axios';
+import { ProjectModal, ProjectCard } from './Projects';
+import { useState, useEffect } from 'react';
 
 const Hero = () => {
   const navigate = useNavigate();
@@ -214,106 +216,32 @@ const Stats = () => {
   );
 };
 
-const ProjectCard = ({ project, onViewDetails, index }) => {
-  const variants = {
-    hidden: { 
-      opacity: 0, 
-      x: index % 3 === 0 ? -150 : (index % 3 === 2 ? 150 : 0),
-      y: index % 3 === 1 ? 100 : 0
-    },
-    visible: { 
-      opacity: 1, 
-      x: 0, 
-      y: 0,
-      transition: { duration: 0.9, ease: "easeOut" }
-    }
-  };
-
-  const getGradient = (title) => {
-    const gradients = [
-      'from-blue-600 to-indigo-700',
-      'from-emerald-500 to-teal-700',
-      'from-purple-600 to-indigo-800',
-      'from-amber-500 to-orange-700',
-      'from-rose-500 to-pink-700',
-      'from-cyan-500 to-blue-700'
-    ];
-    const index = (title?.length || 0) % gradients.length;
-    return gradients[index];
-  };
-
-  return (
-    <motion.div 
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: false, margin: "-50px" }}
-      variants={variants}
-      whileHover={{ 
-        y: [0, -10, 0],
-        transition: { 
-          duration: 2, 
-          repeat: Infinity, 
-          ease: "easeInOut" 
-        } 
-      }}
-      className="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-300 cursor-default flex flex-col h-full group"
-    >
-      <div className={`relative h-44 bg-gradient-to-br ${getGradient(project.title)} p-6 flex flex-col justify-between overflow-hidden group-hover:shadow-inner transition-all`}>
-        {/* Abstract Background Pattern */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none">
-          <div className="absolute -right-4 -top-4 w-32 h-32 rounded-full border-4 border-white"></div>
-          <div className="absolute -left-6 -bottom-6 w-48 h-48 rounded-full border-8 border-white opacity-20"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full border border-white/20 rotate-45"></div>
-        </div>
-
-        <div className="relative z-10 flex justify-between items-start">
-          <span className="bg-white/20 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-white/30">
-            {project.department?.name || (typeof project.department === 'string' ? project.department : 'General')}
-          </span>
-          <div className={`bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-            project.status === 'Completed' ? 'text-green-600' : 'text-orange-600'
-          }`}>
-            {project.status}
-          </div>
-        </div>
-
-        <div className="relative z-10">
-          <GraduationCap className="text-white/40 mb-2" size={32} />
-          <h4 className="text-white font-black text-xl leading-tight line-clamp-2 drop-shadow-sm group-hover:scale-[1.02] transition-transform">
-            {project.title}
-          </h4>
-        </div>
-      </div>
-
-      <div className="p-6 flex-1 flex flex-col">
-        <p className="text-gray-600 text-sm mb-6 leading-relaxed line-clamp-3 italic">
-          &quot;{project.description || project.abstract}&quot;
-        </p>
-        
-        <div className="mt-auto space-y-4 pt-4 border-t border-gray-50 text-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xs border border-blue-100 uppercase">
-                {(project.teamName || 'T').charAt(0)}
-              </div>
-              <span className="text-gray-900 font-bold text-xs truncate max-w-[120px]">{project.teamName}</span>
-            </div>
-            <button 
-              onClick={() => onViewDetails(project)}
-              className="text-blue-600 text-xs font-black uppercase tracking-widest flex items-center gap-1.5 hover:gap-2.5 transition-all group/btn bg-blue-50 px-3 py-2 rounded-lg"
-            >
-              Details <ArrowRight size={14} className="group-hover/btn:translate-x-0.5 transition-transform" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
 const FeaturedProjects = ({ onProjectSelect }) => {
   const navigate = useNavigate();
-  const featuredProjects = projectsData.slice(0, 3);
+  const [featuredProjects, setFeaturedProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchProjects = async () => {
+      try {
+        const { data } = await axios.get('/api/projects/public');
+        if (isMounted) {
+          const completedList = Array.isArray(data) 
+            ? data.filter(p => p.status === 'Completed' || p.status === 'Published')
+            : [];
+          setFeaturedProjects(completedList.slice(0, 3));
+        }
+      } catch (err) {
+        console.warn('Could not load featured projects:', err);
+        if (isMounted) setFeaturedProjects([]);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchProjects();
+    return () => { isMounted = false; };
+  }, []);
 
   return (
     <section className="py-24 bg-white overflow-hidden border-y border-gray-50">
@@ -327,22 +255,42 @@ const FeaturedProjects = ({ onProjectSelect }) => {
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Featured Student Projects</h2>
           <p className="text-gray-600 text-lg">Discover innovative projects created by our talented students across various departments</p>
         </motion.div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          {featuredProjects.map((project, index) => (
-            <ProjectCard 
-              key={project._id || project.id} 
-              index={index}
-              project={project}
-              onViewDetails={onProjectSelect}
-            />
-          ))}
-        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-72 bg-gray-100 rounded-3xl animate-pulse border border-gray-100" />
+            ))}
+          </div>
+        ) : featuredProjects.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+            {featuredProjects.map((project, index) => (
+              <ProjectCard 
+                key={project._id || project.id || index} 
+                index={index}
+                project={project}
+                onViewDetails={onProjectSelect}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 px-6 bg-blue-50/50 rounded-3xl border border-blue-100 max-w-2xl mx-auto mb-12">
+            <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-3">
+              <Sparkles size={24} />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Live Database Connected</h3>
+            <p className="text-gray-500 text-sm">
+              Completed and published final-year projects from your institution will appear here automatically.
+            </p>
+          </div>
+        )}
+
         <div className="text-center">
           <button 
             onClick={() => navigate('/projects')}
-            className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-all font-semibold shadow-lg shadow-blue-200 cursor-pointer"
+            className="bg-blue-600 text-white px-8 py-3 rounded-xl hover:bg-blue-700 transition-all font-semibold shadow-lg shadow-blue-200 cursor-pointer"
           >
-            View All Projects
+            Explore Projects Gallery
           </button>
         </div>
       </div>

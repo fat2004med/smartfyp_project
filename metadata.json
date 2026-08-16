@@ -1,0 +1,8 @@
+{
+  "name": "Remix: SmartFYP: College FYP Project Management System ",
+  "description": "A comprehensive project management system designed for Affiliated College to efficiently manage final year projects across multiple departments.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

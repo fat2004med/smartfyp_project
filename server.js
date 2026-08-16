@@ -1064,7 +1064,7 @@ async function startServer() {
       root: path.resolve(__dirname, "."),
     });
     app.use(vite.middlewares);
-        } else {
+          } else {
     console.log("Serving static production build from /dist...");
     const distPath = path.resolve(__dirname, "dist");
     
@@ -1077,6 +1077,7 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+
 
 
 

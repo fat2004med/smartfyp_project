@@ -1,11 +1,11 @@
-// Add this at the very top of server.js
 console.log('🚀 Server starting...');
 console.log('📝 NODE_ENV:', process.env.NODE_ENV);
 console.log('📝 MONGODB_URI:', process.env.MONGODB_URI ? '✅ Set' : '❌ Not set');
 
-// Check if running on Vercel
-const isVercel = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+// Check if running specifically on Vercel
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
 console.log('🏗️  Running on Vercel:', isVercel);
+
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -1064,7 +1064,14 @@ async function startServer() {
       root: path.resolve(__dirname, "."),
     });
     app.use(vite.middlewares);
-          } else {
+  } else if (isVercel) {
+    console.log("Running in Vercel Serverless Mode (API Only)...");
+
+    // Root endpoint health check for Vercel
+    app.get("/", (req, res) => {
+      res.status(200).json({ message: "SmartFYP API is running successfully!" });
+    });
+  } else {
     console.log("Serving static production build from /dist...");
     const distPath = path.resolve(__dirname, "dist");
     
@@ -1077,10 +1084,6 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
-
-
-
-
 
   // Global Error Handler
   app.use(errorHandler);
@@ -1099,7 +1102,6 @@ async function startServer() {
     });
   });
 }
-
 
 // Start the server instance
 startServer();

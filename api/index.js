@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import connectDB, { getDBStatus } from "../config/db.js";
+import { seedData } from "../config/seedData.js";
 import errorHandler from "../middleware/errorHandler.js";
 
 // Route imports
@@ -53,10 +54,14 @@ app.options("*", cors());
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
-// Serverless Database Connection Middleware
+// Serverless Database Connection & Auto-Seed Middleware
 app.use(async (req, res, next) => {
   try {
     await connectDB();
+    if (getDBStatus()) {
+      // Background seed check
+      seedData().catch((e) => console.warn("Background seed note:", e.message));
+    }
   } catch (err) {
     console.error("Database connection warning in request:", err.message);
   }

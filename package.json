@@ -3,15 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "scripts": {
+"scripts": {
     "dev": "node server.js",
     "build": "vite build",
-    "build:client": "vite build",
-    "build:vercel": "vite build",
-    "start": "node server.js",
+    "start": "NODE_ENV=production node server.js",
     "lint": "eslint . --ext .js,.jsx",
     "test": "vitest run",
-    "clean": "node -e \"const fs=require('fs'); if(fs.existsSync('dist')) fs.rmSync('dist', {recursive: true, force: true});\""
+    "clean": "node -e \"import fs from 'fs'; if(fs.existsSync('dist')) fs.rmSync('dist', {recursive: true, force: true});\""
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

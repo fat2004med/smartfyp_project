@@ -891,7 +891,8 @@ async function seedData() {
 }
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
 
 // Trust proxy for secure headers behind Cloud Run / reverse proxy
 app.set("trust proxy", true);
@@ -1054,9 +1055,7 @@ app.get("/api/health", async (req, res) => {
     counts
   });
 });
-
 async function startServer() {
-  // Start Vite or Static serving
   if (process.env.NODE_ENV !== "production") {
     console.log("Initializing Vite dev server...");
     const vite = await createViteServer({
@@ -1068,8 +1067,13 @@ async function startServer() {
   } else {
     console.log("Serving static production build from /dist...");
     const distPath = path.resolve(__dirname, "dist");
+    
+    // Serve build assets
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+
+    // Route SPA requests to index.html while leaving API endpoints untouched
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith('/api')) return next();
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
@@ -1077,23 +1081,21 @@ async function startServer() {
   // Global Error Handler
   app.use(errorHandler);
 
-  // Start listening (only when not running inside a serverless lambda wrapper)
-  if (!process.env.VERCEL) {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`\x1b[36m%s\x1b[0m`, `🚀 Server listening on http://0.0.0.0:${PORT}`);
-      
-      // Database & Seeding in background
-      connectDB().then(async () => {
-        if (getDBStatus()) {
-          console.log("Database connected. Seeding if necessary...");
-          await seedData();
-        }
-      }).catch(err => {
-        console.error("Database connection/seeding failed:", err);
-      });
+  // Start HTTP Listener
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Server listening on port ${PORT}`);
+    
+    connectDB().then(async () => {
+      if (getDBStatus()) {
+        console.log("Database connected. Seeding if necessary...");
+        await seedData();
+      }
+    }).catch(err => {
+      console.error("Database connection/seeding failed:", err);
     });
-  }
+  });
 }
+
 
 // Start the server instance
 startServer();

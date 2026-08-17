@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import axios from 'axios';
+import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { 
@@ -61,7 +61,7 @@ const UserManagement = () => {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const { data } = await axios.get('/api/users');
+      const { data } = await api.get('/api/users');
       setUsers(data);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -72,7 +72,7 @@ const UserManagement = () => {
 
   const fetchDepts = useCallback(async () => {
     try {
-      const { data } = await axios.get('/api/departments');
+      const { data } = await api.get('/api/departments');
       setDepts(data);
     } catch (error) {
       console.error('Error fetching departments:', error);
@@ -156,12 +156,16 @@ const UserManagement = () => {
     }
 
     try {
+      const payload = {
+        ...newUser,
+        origin: window.location.origin
+      };
       if (editingUser) {
-        const { data } = await axios.put(`/api/users/${editingUser._id}`, newUser);
+        const { data } = await api.put(`/api/users/${editingUser._id}`, payload);
         setUsers(users.map(u => u._id === editingUser._id ? data : u));
         setEditingUser(null);
       } else {
-        const { data } = await axios.post('/api/users', newUser);
+        const { data } = await api.post('/api/users', payload);
         setUsers([...users, data]);
       }
       setIsModalOpen(false);
@@ -181,7 +185,7 @@ const UserManagement = () => {
     setSubmittingId(`toggle-${id}`);
     setError(null);
     try {
-      const { data } = await axios.put(`/api/users/${id}/toggle-status`);
+      const { data } = await api.put(`/api/users/${id}/toggle-status`);
       setUsers(users.map(u => u._id === id ? { ...u, isActive: data.isActive } : u));
       toast.success(data.message || 'Status updated successfully!');
     } catch (error) {
@@ -195,7 +199,7 @@ const UserManagement = () => {
     setSubmittingId(`delete-${id}`);
     setError(null);
     try {
-      await axios.delete(`/api/users/${id}`);
+      await api.delete(`/api/users/${id}`);
       await fetchUsers();
       toast.success('User deleted successfully!');
       setDeleteConfirmId(null);
@@ -219,9 +223,10 @@ const UserManagement = () => {
     if (!resetModalUser) return;
     setSubmittingId('direct-reset');
     try {
-      const { data } = await axios.post(`/api/users/${resetModalUser._id}/reset-password`, {
+      const { data } = await api.post(`/api/users/${resetModalUser._id}/reset-password`, {
         newPassword: temporaryPassword,
-        requirePasswordChange: requireChangeOnLogin
+        requirePasswordChange: requireChangeOnLogin,
+        origin: window.location.origin
       });
       setResetSuccessData(data);
       toast.success(data.message || 'Password reset successfully!');

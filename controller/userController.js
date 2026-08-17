@@ -3,6 +3,7 @@ import Department from "../models/Department.js";
 import Project from "../models/Project.js";
 import sendEmail from "../utils/sendEmail.js";
 import { validatePassword, generateCompliantPassword } from "../utils/passwordValidator.js";
+import { getPortalBaseUrl } from "../utils/portalUrl.js";
 
 export const getUsers = async (req, res) => {
   try {
@@ -127,8 +128,8 @@ export const createUser = async (req, res) => {
 
       // Send greeting email with temp credentials
       try {
-        const referer = req.get('referer');
-        const portalUrl = referer ? new URL(referer).origin : (req.protocol + "://" + req.get("host"));
+        const portalUrl = getPortalBaseUrl(req, req.body.origin);
+        const loginUrl = `${portalUrl}/login`;
         
         const htmlContent = `<!DOCTYPE html>
 <html>
@@ -306,7 +307,7 @@ export const createUser = async (req, res) => {
         </div>
 
         <div class="cta-container">
-          <a href="${portalUrl}" class="cta-button" target="_blank" style="color: #ffffff; text-decoration: none;">Sign In To SmartFYP</a>
+          <a href="${loginUrl}" class="cta-button" target="_blank" style="color: #ffffff; text-decoration: none;">Sign In To SmartFYP</a>
         </div>
 
         <p class="intro" style="margin-top: 28px; margin-bottom: 0;">If you have any questions or require assistance, please get in touch with your department Head of Department (HOD) or Admin.<br><br>Best Regards,<br><strong>SmartFYP Team</strong></p>
@@ -483,11 +484,12 @@ export const resetUserPassword = async (req, res) => {
 
     // Try to notify the user via email with their new credentials
     try {
-      const portalUrl = (req.get('origin') || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, "");
+      const portalUrl = getPortalBaseUrl(req, req.body.origin);
+      const loginUrl = `${portalUrl}/login`;
       await sendEmail({
         email: user.email,
         subject: "SmartFYP Account Password Reset",
-        message: `Hello ${user.name},\n\nYour account password has been reset by the department administrator/HOD.\n\nNew Temporary Password: ${newPassword}\nAssigned Role: ${user.role}\n\nPlease login at: ${portalUrl}/login\n${requirePasswordChange ? "You will be prompted to change your password immediately upon login." : ""}\n\nBest regards,\nSmartFYP Team`,
+        message: `Hello ${user.name},\n\nYour account password has been reset by the department administrator/HOD.\n\nNew Temporary Password: ${newPassword}\nAssigned Role: ${user.role}\n\nPlease login at: ${loginUrl}\n${requirePasswordChange ? "You will be prompted to change your password immediately upon login." : ""}\n\nBest regards,\nSmartFYP Team`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
             <div style="background: #ffffff; border-radius: 12px; padding: 24px; border: 1px solid #e2e8f0;">
@@ -501,7 +503,7 @@ export const resetUserPassword = async (req, res) => {
               </div>
               <p>${requirePasswordChange ? "You will be prompted to create your new personal password upon your next login." : ""}</p>
               <div style="text-align: center; margin: 24px 0;">
-                <a href="${portalUrl}/login" target="_blank" style="background-color: #2563eb; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold;">Login to SmartFYP</a>
+                <a href="${loginUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Login to SmartFYP</a>
               </div>
               <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
               <p style="font-size: 12px; color: #94a3b8;">If you did not request this assistance, please contact your department coordinator.</p>

@@ -1,28 +1,29 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { motion } from 'motion/react';
-import { Mail, ShieldCheck, AlertCircle, CheckCircle2, ChevronRight, LayoutDashboard, ArrowLeft } from 'lucide-react';
+import { Mail, ShieldCheck, AlertCircle, CheckCircle2, ChevronRight, LayoutDashboard, ArrowLeft, ExternalLink, KeyRound } from 'lucide-react';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [successData, setSuccessData] = useState(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessData(null);
     try {
-      await axios.post('/api/auth/forgot-password', { 
-        email, 
+      const response = await api.post('/api/auth/forgot-password', { 
+        email: email.trim(), 
         origin: window.location.origin 
       });
-      setSuccess(true);
+      setSuccessData(response.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send reset link. Please try again.');
+      setError(err.response?.data?.message || 'Failed to send reset link. Please check your email and try again.');
     } finally {
       setLoading(false);
     }
@@ -50,27 +51,65 @@ const ForgotPassword = () => {
             </div>
             <h2 className="text-3xl font-bold text-gray-900">Forgot Password?</h2>
             <p className="text-gray-500 mt-2">
-              Enter your email address and we&apos;ll send you a link to reset your password.
+              Enter your registered email address to receive your secure password reset link.
             </p>
           </div>
 
-          {success ? (
+          {successData ? (
             <motion.div 
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              className="text-center py-8"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-center py-4"
             >
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
                 <CheckCircle2 className="text-green-600" size={40} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Email Sent!</h3>
-              <p className="text-gray-600 px-4">
-                We&apos;ve sent a password reset link to <strong className="text-gray-900">{email}</strong>. 
-                Please check your inbox (and spam folder).
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {successData.emailSent ? 'Reset Email Dispatched!' : 'Reset Link Ready'}
+              </h3>
+              
+              <p className="text-gray-600 text-sm leading-relaxed px-2 mb-6">
+                {successData.emailSent ? (
+                  <>
+                    We have dispatched a password reset link to <strong className="text-gray-900">{email}</strong>. 
+                    Please check your inbox and spam folder.
+                  </>
+                ) : (
+                  <>
+                    A secure password reset link has been generated for <strong className="text-gray-900">{email}</strong>.
+                  </>
+                )}
               </p>
+
+              {/* Direct Reset Action */}
+              {successData.token && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-2xl text-left space-y-3">
+                  <div className="flex items-center gap-2 text-blue-800 font-semibold text-xs uppercase tracking-wider">
+                    <KeyRound size={16} />
+                    <span>Instant Password Reset</span>
+                  </div>
+                  <p className="text-xs text-blue-700 leading-normal">
+                    You can reset your password immediately using the link below:
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (successData.token) {
+                        navigate(`/reset-password?token=${encodeURIComponent(successData.token)}`);
+                      } else if (successData.resetUrl) {
+                        window.location.href = successData.resetUrl;
+                      }
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition-all shadow-md shadow-blue-200 flex items-center justify-center gap-2"
+                  >
+                    <span>Proceed to Reset Password</span>
+                    <ExternalLink size={15} />
+                  </button>
+                </div>
+              )}
+
               <button 
                 onClick={() => navigate('/login')}
-                className="mt-8 text-blue-600 font-bold hover:text-blue-700 underline underline-offset-4"
+                className="text-blue-600 font-bold hover:text-blue-700 underline underline-offset-4 text-sm"
               >
                 Return to Login
               </button>
@@ -79,7 +118,7 @@ const ForgotPassword = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 flex items-center gap-3 rounded-lg animate-shake">
-                  <AlertCircle size={20} />
+                  <AlertCircle size={20} className="shrink-0" />
                   <p className="text-sm font-medium">{error}</p>
                 </div>
               )}
@@ -101,7 +140,7 @@ const ForgotPassword = () => {
                 disabled={loading}
                 className={`w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                {loading ? 'Sending Link...' : 'Send Reset Link'}
+                {loading ? 'Processing...' : 'Send Reset Link'}
                 {!loading && <ChevronRight size={20} />}
               </button>
             </form>
@@ -120,3 +159,4 @@ const ForgotPassword = () => {
 };
 
 export default ForgotPassword;
+

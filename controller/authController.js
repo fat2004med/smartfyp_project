@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import sendEmail from "../utils/sendEmail.js";
 import { logEvent } from "../utils/logger.js";
 import { validatePassword } from "../utils/passwordValidator.js";
+import { getPortalBaseUrl } from "../utils/portalUrl.js";
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || "fallback_secret", {
@@ -72,56 +73,32 @@ export const forgotPassword = async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User with this email was not found in the system." });
     }
 
     // Generate a secure reset token using JWT
     const resetToken = jwt.sign(
       { id: user._id, email: user.email, purpose: "password-reset" },
       process.env.JWT_SECRET || "fallback_secret",
-      { expiresIn: "1h" }
+      { expiresIn: "2h" }
     );
 
-    // Accurately determine the frontend base URL
-    let baseUrl = clientOrigin;
-    if (!baseUrl) {
-      const originHeader = req.get('origin');
-      const refererHeader = req.get('referer');
-      if (originHeader) {
-        baseUrl = originHeader;
-      } else if (refererHeader) {
-        try {
-          baseUrl = new URL(refererHeader).origin;
-        } catch (e) {
-          baseUrl = null;
-        }
-      }
-    }
-
-    if (!baseUrl) {
-      const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : req.protocol) || 'https';
-      const host = req.headers['x-forwarded-host'] || req.get('host');
-      baseUrl = `${proto}://${host}`;
-    }
-
-    baseUrl = baseUrl.replace(/\/+$/, "");
-    if (baseUrl.includes('.run.app') && baseUrl.startsWith('http://')) {
-      baseUrl = baseUrl.replace('http://', 'https://');
-    }
-
+    // Accurately determine the portal base URL for live portal vs AI Studio
+    const baseUrl = getPortalBaseUrl(req, clientOrigin);
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+    const loginUrl = `${baseUrl}/login`;
 
-    const subject = "Password Reset Request - SmartFYP";
-    const plainTextMessage = `Hello ${user.name},\n\nYou requested to reset the password for your SmartFYP account.\n\nPlease click the link below (or copy and paste it into your browser) to reset your password. This link will expire in 1 hour:\n\n${resetUrl}\n\nIf you did not request this change, you can safely ignore this email and your password will remain unchanged.\n\nBest regards,\nSmartFYP Team`;
+    const subject = "SmartFYP - Password Reset Request";
+    const plainTextMessage = `Hello ${user.name},\n\nYou requested to reset the password for your SmartFYP account (${user.email}).\n\nPlease click the link below (or copy and paste it into your browser) to reset your password. This link is valid for 2 hours:\n\n${resetUrl}\n\nIf you did not request this change, you can safely ignore this email and your password will remain unchanged.\n\nBest regards,\nSmartFYP Team`;
 
     const htmlMessage = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background-color: #f8fafc;">
         <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 36px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 24px;">
-            <div style="width: 36px; height: 36px; background-color: #2563eb; border-radius: 8px; display: inline-block; text-align: center; line-height: 36px; color: #ffffff; font-weight: bold; font-size: 18px;">
+            <div style="width: 38px; height: 38px; background-color: #2563eb; border-radius: 10px; display: inline-block; text-align: center; line-height: 38px; color: #ffffff; font-weight: bold; font-size: 18px;">
               S
             </div>
-            <span style="font-size: 20px; font-weight: 800; color: #0f172a; margin-left: 8px;">SmartFYP</span>
+            <span style="font-size: 22px; font-weight: 800; color: #0f172a; margin-left: 10px;">SmartFYP</span>
           </div>
 
           <h2 style="font-size: 22px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 12px;">Reset Your Password</h2>
@@ -137,7 +114,7 @@ export const forgotPassword = async (req, res) => {
           </div>
 
           <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin-bottom: 16px;">
-            This link is valid for <strong>1 hour</strong>. If the button above does not work, copy and paste the following link into your browser:
+            This link is valid for <strong>2 hours</strong>. If the button above does not work, copy and paste the following link into your browser:
           </p>
           <p style="font-size: 13px; line-height: 1.5; color: #2563eb; word-break: break-all; margin-bottom: 28px; background-color: #f1f5f9; padding: 12px; border-radius: 8px;">
             <a href="${resetUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">${resetUrl}</a>
@@ -156,6 +133,7 @@ export const forgotPassword = async (req, res) => {
     `;
 
     let emailSent = false;
+    let emailErrorMessage = null;
     try {
       await sendEmail({
         email: user.email,
@@ -164,26 +142,35 @@ export const forgotPassword = async (req, res) => {
         html: htmlMessage
       });
       emailSent = true;
+      console.log(`[ForgotPassword] Password reset email delivered successfully to ${user.email}`);
     } catch (emailErr) {
-      console.error("Nodemailer failed to send password reset email:", emailErr.message);
+      emailErrorMessage = emailErr.message;
+      console.warn(`[ForgotPassword] Email delivery notice for ${user.email}:`, emailErr.message);
     }
 
-    // Save a system log for easy testing
+    // Save a system log for record & debugging
     await logEvent({
-      level: "Info",
+      level: emailSent ? "Info" : "Warning",
       event: "Password Reset Token Generated",
       user: user.email,
-      details: `Password reset requested. Link generated: ${resetUrl}. Email delivery status: ${emailSent ? 'Delivered' : 'Failed - logged for testing (SMTP might need config)'}`,
+      details: `Password reset link generated for ${user.email}. Target Link: ${resetUrl}. Email delivery: ${emailSent ? 'Delivered via SMTP' : 'Email failed to send (' + emailErrorMessage + ')'}`,
       ip: req.ip || req.headers["x-forwarded-for"] || "Internal",
     });
 
     res.json({ 
-      message: "Password reset link sent to your email",
+      success: true,
+      message: emailSent 
+        ? "Password reset link sent to your email inbox." 
+        : "Password reset link generated. If email delivery is unavailable in your environment, use the direct reset link.",
       resetUrl,
-      devInfo: `[TESTING ONLY] A system log was added. Reset Link: ${resetUrl}`
+      token: resetToken,
+      emailSent,
+      emailError: emailSent ? null : emailErrorMessage,
+      devInfo: `Reset Link: ${resetUrl}`
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("[ForgotPassword] Error:", error);
+    res.status(500).json({ message: error.message || "Failed to process forgot password request." });
   }
 };
 
@@ -250,6 +237,53 @@ export const resetPassword = async (req, res) => {
       ip: req.ip || req.headers["x-forwarded-for"] || "Internal",
     });
 
+    // Send confirmation email with portal login button
+    try {
+      const baseUrl = getPortalBaseUrl(req, req.body.origin);
+      const loginUrl = `${baseUrl}/login`;
+      await sendEmail({
+        email: user.email,
+        subject: "SmartFYP - Password Changed Successfully",
+        message: `Hello ${user.name},\n\nYour SmartFYP password has been updated successfully.\n\nYou can sign in to the portal here: ${loginUrl}\n\nIf you did not perform this action, please contact your administrator immediately.\n\nBest regards,\nSmartFYP Team`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background-color: #f8fafc;">
+            <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 36px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 24px;">
+                <div style="width: 38px; height: 38px; background-color: #2563eb; border-radius: 10px; display: inline-block; text-align: center; line-height: 38px; color: #ffffff; font-weight: bold; font-size: 18px;">
+                  S
+                </div>
+                <span style="font-size: 22px; font-weight: 800; color: #0f172a; margin-left: 10px;">SmartFYP</span>
+              </div>
+
+              <h2 style="font-size: 22px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 12px;">Password Changed Successfully</h2>
+              <p style="font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 24px;">
+                Hello <strong>${user.name}</strong>,<br>
+                The password for your SmartFYP account (<strong>${user.email}</strong>) was recently changed. You can now use your new password to sign in.
+              </p>
+
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="${loginUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
+                  Sign In To Portal
+                </a>
+              </div>
+
+              <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin-bottom: 16px;">
+                If you did not make this change, please contact your department coordinator or administrator immediately.
+              </p>
+
+              <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 28px 0;" />
+
+              <p style="font-size: 12px; line-height: 1.5; color: #94a3b8; margin: 0;">
+                © 2026 SmartFYP Academic Portal. All rights reserved.
+              </p>
+            </div>
+          </div>
+        `
+      });
+    } catch (mailErr) {
+      console.warn("[ResetPassword] Confirmation email notification notice:", mailErr.message);
+    }
+
     res.json({
       message: "Password reset successful",
       user: {
@@ -302,6 +336,53 @@ export const updatePassword = async (req, res) => {
       details: "Password was changed by logged-in user inside security settings",
       ip: req.ip || req.headers["x-forwarded-for"] || "Internal",
     });
+
+    // Send confirmation email with portal login button
+    try {
+      const baseUrl = getPortalBaseUrl(req, req.body.origin);
+      const loginUrl = `${baseUrl}/login`;
+      await sendEmail({
+        email: user.email,
+        subject: "SmartFYP - Password Updated Successfully",
+        message: `Hello ${user.name},\n\nYour SmartFYP password was updated successfully.\n\nPortal: ${loginUrl}\n\nIf you did not perform this change, please alert your administrator immediately.\n\nBest regards,\nSmartFYP Team`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background-color: #f8fafc;">
+            <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 36px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 24px;">
+                <div style="width: 38px; height: 38px; background-color: #2563eb; border-radius: 10px; display: inline-block; text-align: center; line-height: 38px; color: #ffffff; font-weight: bold; font-size: 18px;">
+                  S
+                </div>
+                <span style="font-size: 22px; font-weight: 800; color: #0f172a; margin-left: 10px;">SmartFYP</span>
+              </div>
+
+              <h2 style="font-size: 22px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 12px;">Security Notice: Password Updated</h2>
+              <p style="font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 24px;">
+                Hello <strong>${user.name}</strong>,<br>
+                Your password for <strong>SmartFYP Academic Portal</strong> (${user.email}) was recently updated from your account security settings.
+              </p>
+
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="${loginUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
+                  Go To Portal
+                </a>
+              </div>
+
+              <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin-bottom: 16px;">
+                If you did not make this change, please contact your department coordinator or administrator immediately.
+              </p>
+
+              <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 28px 0;" />
+
+              <p style="font-size: 12px; line-height: 1.5; color: #94a3b8; margin: 0;">
+                © 2026 SmartFYP Academic Portal. All rights reserved.
+              </p>
+            </div>
+          </div>
+        `
+      });
+    } catch (mailErr) {
+      console.warn("[UpdatePassword] Confirmation email notification notice:", mailErr.message);
+    }
 
     res.json({ message: "Password updated successfully" });
   } catch (error) {

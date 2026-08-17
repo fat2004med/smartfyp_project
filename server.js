@@ -2,9 +2,10 @@ console.log('🚀 Server starting...');
 console.log('📝 NODE_ENV:', process.env.NODE_ENV);
 console.log('📝 MONGODB_URI:', process.env.MONGODB_URI ? '✅ Set' : '❌ Not set');
 
-// Check if running specifically on Vercel
 const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+const isRailway = process.env.RAILWAY === 'true' || process.env.RAILWAY_STATIC_URL;
 console.log('🏗️  Running on Vercel:', isVercel);
+console.log('🏗️  Running on Railway:', isRailway);
 
 import express from "express";
 import { createServer as createViteServer } from "vite";
@@ -16,7 +17,6 @@ import dotenv from "dotenv";
 import connectDB, { getDBStatus } from "./config/db.js";
 import errorHandler from "./middleware/errorHandler.js";
 
-// Route imports
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
@@ -33,7 +33,6 @@ import recommender from "./utils/recommender.js";
 
 dotenv.config();
 
-// Pre-train the ML recommender model using the raw fyp_projects.csv dataset
 recommender.train();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -52,7 +51,6 @@ import SystemLog from "./models/SystemLog.js";
 
 async function seedData() {
   try {
-    // 1. Seed Departments
     const deptNames = ["Computer Science", "Software Engineering", "Information Technology", "Artificial Intelligence", "Cyber Security"];
     const depts = [];
     const existingDeptsCount = await Department.countDocuments({});
@@ -78,7 +76,6 @@ async function seedData() {
     const seDept = depts[1] || { _id: null };
     const itDept = depts[2] || { _id: null };
 
-    // 2. Seed Users
     const commonPassword = "password123";
     const adminPassword = "adminp@ssword123";
 
@@ -103,14 +100,12 @@ async function seedData() {
     for (const u of usersToSeed) {
       let user = await User.findOne({ email: u.email });
       if (!user) {
-        // Only recreate seed users if database was completely empty/new,
-        // or for the primordial global admin account.
         if (existingUsersCount === 0 || u.email === "fat2004med@gmail.com") {
           console.log(`Creating user: ${u.email} with role ${u.role}`);
           user = await User.create({
             name: u.name,
             email: u.email,
-            password: u.password, // This will be hashed by pre-save
+            password: u.password,
             role: u.role,
             department: u.dept,
             isFirstLogin: false,
@@ -122,11 +117,10 @@ async function seedData() {
           continue;
         }
       } else {
-        // Retain current user status, passwords, and deactivations instead of overwriting them on boot.
         console.log(`User already exists, preserving accurate state and passwords for: ${u.email}`);
         if (u.email === "fat2004med@gmail.com" || u.email === "fatp2010210@gmail.com" || u.email === "shaheenabdulrahman@gmail.com") {
           user.isActive = true;
-          user.password = u.password; // Sync password back to seed password
+          user.password = u.password;
           await user.save();
           console.log(`✅ Ensured Admin account ${u.email} is active and password is in sync.`);
         }
@@ -135,17 +129,13 @@ async function seedData() {
     }
     console.log(`All available seed users synchronized.`);
 
-    // Use a Proxy to guarantee we never throw a null/undefined reference error
-    // when accessing seededUsers[email]._id or other fields on deleted seed users.
     const seededUsers = new Proxy(seededUsersRaw, {
       get(target, prop) {
         if (target[prop]) return target[prop];
-        // Safe fallback to Global Admin to prevent server boot failures
         return target["fat2004med@gmail.com"] || { _id: null, name: "Fallback User", email: prop };
       }
     });
 
-    // Assign HODs to depts if they exist and are actual doc objects
     if (seededUsers["hod_cs@smartfyp.com"] && csDept && typeof csDept.save === "function") {
       csDept.hod = seededUsers["hod_cs@smartfyp.com"]._id;
       await csDept.save();
@@ -155,7 +145,6 @@ async function seedData() {
       await seDept.save();
     }
 
-    // 3. Seed Projects
     const projects = [
       {
         title: "AI-Powered Smart FYP Tracker",
@@ -232,7 +221,6 @@ async function seedData() {
           continue;
         }
       } else {
-        // Migration: Ensure members is populated if it was seeded with teamMembers before
         if ((!project.members || project.members.length === 0) && p.members) {
            project.members = p.members;
            await project.save();
@@ -244,7 +232,6 @@ async function seedData() {
       }
     }
 
-    // 4. Seed Tasks
     const mainProject = seededProjects.find(p => p.title === "AI-Powered Smart FYP Tracker") || seededProjects[0] || await Project.findOne({});
     const seProject = seededProjects.find(p => p.title === "Blockchain Voting App") || seededProjects[1] || await Project.findOne({});
     const itProject = seededProjects.find(p => p.title === "IoT Smart Agriculture") || seededProjects[2] || await Project.findOne({});
@@ -253,7 +240,6 @@ async function seedData() {
     const taskCount = await Task.countDocuments({});
     if (taskCount < 80) {
       const extraTasks = [
-        // AI Project Tasks
         {
           project: mainProject._id,
           assignedBy: seededUsers["supervisor@smartfyp.com"]._id,
@@ -304,8 +290,6 @@ async function seedData() {
           status: "In Progress",
           deadline: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000)
         },
-
-        // Blockchain Project Tasks
         {
           project: seProject._id,
           assignedBy: seededUsers["wilson@smartfyp.com"]._id,
@@ -346,8 +330,6 @@ async function seedData() {
           status: "Not Started",
           deadline: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
         },
-
-        // IoT Project Tasks
         {
           project: itProject._id,
           assignedBy: seededUsers["supervisor@smartfyp.com"]._id,
@@ -378,8 +360,6 @@ async function seedData() {
           status: "Completed",
           deadline: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
         },
-
-        // Cloud Storage Project Tasks
         {
           project: dsProject._id,
           assignedBy: seededUsers["supervisor@smartfyp.com"]._id,
@@ -409,56 +389,12 @@ async function seedData() {
           priority: "Low",
           status: "Not Started",
           deadline: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000)
-        },
-        // More New Tasks
-        {
-          project: mainProject._id,
-          assignedBy: seededUsers["supervisor@smartfyp.com"]._id,
-          assignee: seededUsers["leader@smartfyp.com"]._id,
-          title: "Security Audit Preparation",
-          description: "Prepare documentation for the external security audit of AI FYP Tracker.",
-          priority: "High",
-          status: "In Progress",
-          deadline: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
-        },
-        {
-          project: mainProject._id,
-          assignedBy: seededUsers["leader@smartfyp.com"]._id,
-          assignee: seededUsers["member@smartfyp.com"]._id,
-          title: "React Frontend Optimization",
-          description: "Implement code splitting and memoization for large dashboards.",
-          priority: "Medium",
-          status: "Not Started",
-          deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        },
-        {
-          project: seProject._id,
-          assignedBy: seededUsers["wilson@smartfyp.com"]._id,
-          assignee: seededUsers["leader2@smartfyp.com"]._id,
-          title: "Unit Testing Smart Contracts",
-          description: "Write comprehensive Hardhat tests for voting eligibility logic.",
-          priority: "High",
-          status: "In Progress",
-          deadline: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
-        },
-        {
-          project: itProject._id,
-          assignedBy: seededUsers["supervisor@smartfyp.com"]._id,
-          assignee: seededUsers["leader@smartfyp.com"]._id,
-          title: "Final Hardware PCB Design",
-          description: "Move from breadboard to a production-ready PCB for the IoT sensors.",
-          priority: "High",
-          status: "Not Started",
-          deadline: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000)
         }
       ];
       await Task.create(extraTasks);
       console.log(`${extraTasks.length} highly rich tasks seeded.`);
     }
 
-    // 9. Extra Rich Tasks (Removed individual check to keep logic clean)
-
-    // 5. Seed Submissions
     const subCount = await Submission.countDocuments({});
     if (subCount < 150) {
       const moreSubmissions = [
@@ -466,7 +402,7 @@ async function seedData() {
           project: mainProject._id,
           submittedBy: seededUsers["leader@smartfyp.com"]._id,
           title: "Phase 1: Architecture Design",
-          description: "Comprehensive system architecture diagram and component interaction document. Includes primary API flows and data models.",
+          description: "Comprehensive system architecture diagram and component interaction document.",
           fileUrl: "https://example.com/arch_design.pdf",
           phase: "Design Document",
           status: "Approved",
@@ -478,7 +414,7 @@ async function seedData() {
           project: mainProject._id,
           submittedBy: seededUsers["leader@smartfyp.com"]._id,
           title: "FYP Proposal Final",
-          description: "Full proposal document highlighting problem statement, objectives, and updated methodology for AI FYP Tracker.",
+          description: "Full proposal document highlighting problem statement, objectives, and updated methodology.",
           fileUrl: "https://example.com/proposal_final.pdf",
           phase: "FYP Proposal",
           status: "Approved",
@@ -490,7 +426,7 @@ async function seedData() {
           project: seProject._id,
           submittedBy: seededUsers["leader2@smartfyp.com"]._id,
           title: "Blockchain Security Analysis",
-          description: "Threat model for the decentralized voting app. Covers potential 51% attacks and smart contract vulnerabilities.",
+          description: "Threat model for the decentralized voting app.",
           fileUrl: "https://example.com/security_audit.pdf",
           phase: "Design Document",
           status: "Approved",
@@ -514,7 +450,7 @@ async function seedData() {
           project: itProject._id,
           submittedBy: seededUsers["leader@smartfyp.com"]._id,
           title: "IoT Node Prototype Video",
-          description: "Demonstration of the hardware setup reading sensor values and transmitting via MQTT.",
+          description: "Demonstration of the hardware setup reading sensor values.",
           fileUrl: "https://example.com/iot_demo.mp4",
           phase: "Implementation Report",
           status: "Approved",
@@ -526,7 +462,7 @@ async function seedData() {
           project: dsProject._id,
           submittedBy: seededUsers["leader@smartfyp.com"]._id,
           title: "Sharding Algorithm Specs",
-          description: "Technical mathematical proof for the data distribution and reconstruct logic.",
+          description: "Technical mathematical proof for the data distribution.",
           fileUrl: "https://example.com/sharding_math.pdf",
           phase: "SRS Document",
           status: "Approved",
@@ -558,7 +494,6 @@ async function seedData() {
           startDate: "Nov 15, 2024",
           endDate: "Nov 30, 2024"
         },
-        // Semester 8 submissions
         {
           project: mainProject._id,
           submittedBy: seededUsers["leader@smartfyp.com"]._id,
@@ -587,7 +522,6 @@ async function seedData() {
       const newlySeededSubmissions = await Submission.create(moreSubmissions);
       console.log(`${newlySeededSubmissions.length} detailed submissions seeded.`);
 
-      // 5.1 Seed Feedback for these submissions
       const feedbackCount = await Feedback.countDocuments();
       if (feedbackCount < 10) {
         await Feedback.create([
@@ -602,7 +536,7 @@ async function seedData() {
           {
             submission: newlySeededSubmissions[2]._id,
             author: seededUsers["wilson@smartfyp.com"]._id,
-            content: "The security analysis is good, but you missed the 'Reentrancy' guard in the vote function. Fix this ASAP.",
+            content: "The security analysis is good, but you missed the 'Reentrancy' guard in the vote function.",
             category: "Code",
             rating: 3,
             role: "Supervisor"
@@ -620,9 +554,6 @@ async function seedData() {
       }
     }
 
-    // 8. Add extra assignments (Cleaned up redundant block)
-
-    // 6. Seed Announcements
     const announceCount = await Announcement.countDocuments({});
     if (announceCount < 10) {
       const mainProject = await Project.findOne({ title: "AI-Powered Smart FYP Tracker" });
@@ -630,7 +561,7 @@ async function seedData() {
         {
           author: seededUsers["hod@smartfyp.com"]._id,
           title: "FYP Proposal Submission Deadline",
-          description: "All groups are required to submit their finalized proposals by next Friday. Please use the template provided in the resources section.",
+          description: "All groups are required to submit their finalized proposals by next Friday.",
           category: "Academic",
           priority: "High",
           targetRoles: ["Team Leader", "Team Member"],
@@ -639,7 +570,7 @@ async function seedData() {
         {
           author: seededUsers["fat2004med@gmail.com"]._id,
           title: "Portal Maintenance Notice",
-          description: "The SmartFYP portal will be undergoing scheduled maintenance this Sunday from 2:00 AM to 4:00 AM.",
+          description: "The SmartFYP portal will be undergoing scheduled maintenance this Sunday.",
           category: "General",
           priority: "Medium",
           targetRoles: ["Admin", "HOD", "Supervisor", "Team Leader", "Team Member"]
@@ -647,7 +578,7 @@ async function seedData() {
         {
           author: seededUsers["supervisor@smartfyp.com"]._id,
           title: "Weekly Progress Meeting",
-          description: "Reminder: Our weekly sync-up for the AI-Powered FYP project is scheduled for Monday at 10 AM in the lab.",
+          description: "Reminder: Our weekly sync-up for the AI-Powered FYP project is scheduled for Monday.",
           category: "General",
           priority: "High",
           targetRoles: ["Team Leader", "Team Member"],
@@ -656,7 +587,7 @@ async function seedData() {
         {
           author: seededUsers["fat2004med@gmail.com"]._id,
           title: "New Documentation Resource",
-          description: "A new LaTeX template for thesis writing has been uploaded to the resources section.",
+          description: "A new LaTeX template for thesis writing has been uploaded.",
           category: "Academic",
           priority: "Low",
           targetRoles: ["Team Member", "Team Leader"]
@@ -664,7 +595,7 @@ async function seedData() {
         {
           author: seededUsers["hod_cs@smartfyp.com"]._id,
           title: "Department Seminar Series",
-          description: "Join us for a talk on 'The Future of AI in Research' this Tuesday at 2 PM in Hall A.",
+          description: "Join us for a talk on 'The Future of AI in Research'.",
           category: "General",
           priority: "Medium",
           targetRoles: ["Admin", "HOD", "Supervisor", "Team Leader", "Team Member"]
@@ -672,7 +603,7 @@ async function seedData() {
         {
           author: seededUsers["hod@smartfyp.com"]._id,
           title: "Mid-Year Review Schedule",
-          description: "Mid-year presentations will start from next month. Check the detailed schedule attached.",
+          description: "Mid-year presentations will start from next month.",
           category: "Academic",
           priority: "High",
           targetRoles: ["Supervisor", "Team Leader"],
@@ -681,7 +612,7 @@ async function seedData() {
         {
           author: seededUsers["fat2004med@gmail.com"]._id,
           title: "Annual Sports Week",
-          description: "University sports week starts from Dec 15th. All students are encouraged to participate.",
+          description: "University sports week starts from Dec 15th.",
           category: "General",
           priority: "Low",
           targetRoles: ["Team Member", "Team Leader", "Supervisor"]
@@ -690,13 +621,12 @@ async function seedData() {
       console.log("Extended announcements seeded.");
     }
 
-    // 7. Seed Assignments
     const assignmentCount = await Assignment.countDocuments();
     if (assignmentCount < 20) {
       const assignments = [
         {
           title: "FYP Final Thesis Submission",
-          description: "Submit the final version of your FYP documentation including all chapters (1-6) and appendices. Ensure zero plagiarism.",
+          description: "Submit the final version of your FYP documentation including all chapters.",
           creator: seededUsers["hod_cs@smartfyp.com"]._id,
           targetRoles: ["Team Leader", "Team Member"],
           endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), 
@@ -704,7 +634,7 @@ async function seedData() {
         },
         {
           title: "Quarterly Evaluation Report",
-          description: "HOD review of progress for the first quarter of the project lifecycle. Update your supervisor before submission.",
+          description: "HOD review of progress for the first quarter of the project lifecycle.",
           creator: seededUsers["hod@smartfyp.com"]._id,
           targetRoles: ["Supervisor"],
           endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
@@ -712,7 +642,7 @@ async function seedData() {
         },
         {
           title: "Mid-Term Presentation Slides",
-          description: "Upload your presentation slides for the mid-term committee review. 15 mins demo + 5 mins Q&A.",
+          description: "Upload your presentation slides for the mid-term committee review.",
           creator: seededUsers["hod_cs@smartfyp.com"]._id,
           targetRoles: ["Team Leader"],
           endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
@@ -720,7 +650,7 @@ async function seedData() {
         },
         {
           title: "Code Repository URL",
-          description: "Share your private GitHub/GitLab repository link with supervisors. Make sure to invite them as collaborators.",
+          description: "Share your private GitHub/GitLab repository link with supervisors.",
           creator: seededUsers["supervisor@smartfyp.com"]._id,
           targetRoles: ["Team Leader", "Team Member"],
           endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
@@ -728,7 +658,7 @@ async function seedData() {
         },
         {
           title: "Weekly Logbook Signed Copies",
-          description: "Scanned copies of your physical logbooks signed by the supervisor for the last 4 weeks.",
+          description: "Scanned copies of your physical logbooks signed by the supervisor.",
           creator: seededUsers["supervisor@smartfyp.com"]._id,
           targetRoles: ["Team Member"],
           endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -740,7 +670,6 @@ async function seedData() {
       console.log("Rich academic assignments seeded.");
     }
 
-    // 10. Seed Templates
     const templateCount = await Template.countDocuments();
     if (templateCount < 5) {
       await Template.create([
@@ -771,29 +700,22 @@ async function seedData() {
       console.log("University templates seeded.");
     }
 
-    // 10.5 Seed initial System Logs
     const logCount = await SystemLog.countDocuments();
     if (logCount === 0) {
       await SystemLog.create([
-        { level: "Info", event: "User Login", user: "fat2004med@gmail.com", details: "Successful login from Chrome on Windows", ip: "192.168.1.1" },
-        { level: "Warning", event: "Failed Login Attempt", user: "unknown@user.com", details: "Invalid password attempt for user admin@smartfyp.com", ip: "45.12.33.102" },
-        { level: "Info", event: "Department Created", user: "fat2004med@gmail.com", details: "New department \"Cyber Security\" added to list", ip: "192.168.1.1" },
-        { level: "Error", event: "Database Connection Timeout", user: "System", details: "Primary database cluster unresponsive for 120ms", ip: "Internal" },
-        { level: "Info", event: "Project Approved", user: "hod_cs@smartfyp.com", details: "AI-Powered Smart FYP Tracker status changed to Active and Approved", ip: "192.168.1.45" },
-        { level: "Warning", event: "High CPU Usage", user: "System", details: "CPU usage exceeded 92% for 5 minutes", ip: "Server-01" },
-        { level: "Info", event: "User Profile Updated", user: "supervisor@smartfyp.com", details: "Contact address and department information updated", ip: "192.168.1.12" },
-        { level: "Error", event: "File Upload Failed", user: "member@smartfyp.com", details: "Storage quota exceeded for user on direct uploads path", ip: "192.168.1.88" },
+        { level: "Info", event: "User Login", user: "fat2004med@gmail.com", details: "Successful login from Chrome", ip: "192.168.1.1" },
+        { level: "Warning", event: "Failed Login Attempt", user: "unknown@user.com", details: "Invalid password attempt", ip: "45.12.33.102" },
+        { level: "Info", event: "Department Created", user: "fat2004med@gmail.com", details: "New department added", ip: "192.168.1.1" },
+        { level: "Error", event: "Database Connection Timeout", user: "System", details: "Primary database cluster unresponsive", ip: "Internal" }
       ]);
       console.log("Initial system logs seeded successfully.");
     }
 
-    // 11. Final Seeding Touch: Ensure "member@smartfyp.com" is set up for testing
     const memberUser = await User.findOne({ email: "member@smartfyp.com" });
     const devUser = await User.findOne({ email: "fat2004med@gmail.com" });
     const studentUsers = [memberUser, devUser].filter(u => u && (u.role === 'Team Member' || u.role === 'Team Leader'));
     
     if (studentUsers.length > 0) {
-      // Find ANY project they are in
       let mainProj = await Project.findOne({ 
         $or: [
           { members: { $in: studentUsers.map(u => u._id) } }, 
@@ -814,7 +736,6 @@ async function seedData() {
           semester: 7
         });
       } else {
-        // Ensure all students are in members
         let changed = false;
         studentUsers.forEach(u => {
           if (!mainProj.members.includes(u._id) && mainProj.teamLeader?.toString() !== u._id.toString()) {
@@ -825,7 +746,6 @@ async function seedData() {
         if (changed) await mainProj.save();
       }
       
-      // Ensure tasks exist for ALL student users in this project
       for (const u of studentUsers) {
         const mTaskCount = await Task.countDocuments({ project: mainProj._id, assignee: u._id });
         if (mTaskCount === 0) {
@@ -833,7 +753,7 @@ async function seedData() {
             {
               project: mainProj._id,
               title: `UI Polish & Responsiveness - ${u.name}`,
-              description: "Work on the dashboard components to ensure they look great on all devices.",
+              description: "Work on the dashboard components to ensure they look great.",
               assignee: u._id,
               assignedBy: u._id,
               priority: "High",
@@ -854,7 +774,6 @@ async function seedData() {
         }
       }
       
-      // Ensure submissions exist
       const subCount = await Submission.countDocuments({ project: mainProj._id });
       if (subCount === 0) {
         await Submission.create([
@@ -893,19 +812,17 @@ async function seedData() {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-
-// Trust proxy for secure headers behind Cloud Run / reverse proxy
 app.set("trust proxy", true);
 
-// Basic middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.VITE_API_URL || '*',
+  credentials: true
+}));
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
-// Serve uploads folder statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Register API routes early so server is responsive immediately
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/departments", departmentRoutes);
@@ -919,7 +836,6 @@ app.use("/api/assignments", assignmentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/plagiarism", plagiarismRoutes);
 
-// Register public contact forms
 app.post("/api/contact", async (req, res, next) => {
   try {
     const { name, email, subject, message } = req.body;
@@ -927,35 +843,27 @@ app.post("/api/contact", async (req, res, next) => {
       return res.status(400).json({ message: "Please provide name, email, subject and message content." });
     }
 
-    // 1. Create database record
     try {
       const ContactMessage = (await import("./models/ContactMessage.js")).default;
-      await ContactMessage.create({
-        name,
-        email,
-        subject,
-        message
-      });
+      await ContactMessage.create({ name, email, subject, message });
       console.log(`[Contact] Saved new message from ${email}`);
     } catch (err) {
       console.error("Database error saving contact message:", err.message);
     }
 
-    // 2. Log event in audit logs with Client IP
     try {
       const SystemLog = (await import("./models/SystemLog.js")).default;
       await SystemLog.create({
         level: "Info",
         event: "Contact Form Submitted",
         user: email || "Guest",
-        details: `Topic: ${subject} | Submitter: ${name} (${email}) | Content: "${message.substring(0, 70)}..."`,
+        details: `Topic: ${subject} | Submitter: ${name} (${email})`,
         ip: req.ip || "Internal"
       });
     } catch (err) {
       console.error("System logging error for contact message:", err.message);
     }
 
-    // 3. Notify administrator accounts
     try {
       const User = (await import("./models/User.js")).default;
       const Notification = (await import("./models/Notification.js")).default;
@@ -965,7 +873,7 @@ app.post("/api/contact", async (req, res, next) => {
           await Notification.create({
             recipient: admin._id,
             title: `New Support Inquiry: ${subject}`,
-            message: `${name} has submitted a support question: "${message.substring(0, 100)}..."`,
+            message: `${name} has submitted a support question.`,
             type: "General"
           });
         }
@@ -976,14 +884,13 @@ app.post("/api/contact", async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      message: "Your message has been sent successfully. Our team will review and reply within 24 hours!"
+      message: "Your message has been sent successfully!"
     });
   } catch (error) {
     next(error);
   }
 });
 
-// Project Recommendation Engine API (Off-line ML TF-IDF Cosine Similarity)
 app.post("/api/recommendations", async (req, res, next) => {
   try {
     const { query, domain, techStack, limit } = req.body;
@@ -993,7 +900,7 @@ app.post("/api/recommendations", async (req, res, next) => {
       if (!trained) {
         return res.status(500).json({
           success: false,
-          message: "Recommender system model is not yet trained or loaded."
+          message: "Recommender system model is not yet trained."
         });
       }
     }
@@ -1016,12 +923,11 @@ app.post("/api/recommendations", async (req, res, next) => {
   }
 });
 
-// Diagnostic / Debug Endpoint: /api/test
 app.get("/api/test", async (req, res) => {
   const dbConnected = getDBStatus();
   res.status(200).json({
     success: true,
-    message: "Backend API is online and communicating successfully!",
+    message: "Backend API is online!",
     timestamp: new Date().toISOString(),
     environment: {
       NODE_ENV: process.env.NODE_ENV || "development",
@@ -1031,12 +937,11 @@ app.get("/api/test", async (req, res) => {
     },
     database: {
       connected: dbConnected,
-      status: dbConnected ? "Connected to MongoDB Atlas" : "Disconnected / Checking credentials",
+      status: dbConnected ? "Connected to MongoDB" : "Disconnected",
     },
   });
 });
 
-// Health check route - MUST be accessible immediately
 app.get("/api/health", async (req, res) => {
   let counts = { projects: 0, users: 0, depts: 0 };
   if (getDBStatus()) {
@@ -1045,7 +950,7 @@ app.get("/api/health", async (req, res) => {
       counts.users = await User.countDocuments();
       counts.depts = await Department.countDocuments();
     } catch (e) {
-      console.error("Health check project count failed:", e.message);
+      console.error("Health check failed:", e.message);
     }
   }
   res.json({ 
@@ -1055,56 +960,79 @@ app.get("/api/health", async (req, res) => {
     counts
   });
 });
+
 async function startServer() {
+  if (process.env.NODE_ENV === "production") {
+    console.log("🔄 Connecting to database...");
+    try {
+      await connectDB();
+      if (getDBStatus()) {
+        console.log("✅ Database connected successfully!");
+        await seedData();
+      }
+    } catch (err) {
+      console.error("❌ Database connection failed:", err);
+    }
+  }
+
   if (process.env.NODE_ENV !== "production") {
-    console.log("Initializing Vite dev server...");
+    console.log("🔄 Initializing Vite dev server...");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
       root: path.resolve(__dirname, "."),
     });
     app.use(vite.middlewares);
-  } else if (isVercel) {
-    console.log("Running in Vercel Serverless Mode (API Only)...");
-
-    // Root endpoint health check for Vercel
-    app.get("/", (req, res) => {
-      res.status(200).json({ message: "SmartFYP API is running successfully!" });
-    });
   } else {
-    console.log("Serving static production build from /dist...");
     const distPath = path.resolve(__dirname, "dist");
+    console.log(`📁 Serving static from: ${distPath}`);
     
-    // Serve build assets from /dist
-    app.use(express.static(distPath));
+    if (!fs.existsSync(distPath)) {
+      console.error("❌ dist folder not found! Run 'npm run build' first.");
+      
+      app.get("*", (req, res) => {
+        if (req.path.startsWith('/api')) return;
+        res.status(200).send(`
+          <html>
+            <head><title>SmartFYP</title></head>
+            <body>
+              <h1>🚀 SmartFYP Application</h1>
+              <p>Build not found. Please rebuild the application.</p>
+              <p>API is available at <a href="/api/health">/api/health</a></p>
+            </body>
+          </html>
+        `);
+      });
+    } else {
+      app.use(express.static(distPath, {
+        maxAge: '1d',
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          }
+          if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          }
+        }
+      }));
 
-    // Route all non-API requests to index.html (SPA Fallback)
-    app.get("*", (req, res, next) => {
-      if (req.path.startsWith('/api')) return next();
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+      app.get("*", (req, res, next) => {
+        if (req.path.startsWith('/api')) return next();
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
   }
 
-  // Global Error Handler
   app.use(errorHandler);
 
-  // Start HTTP Listener
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Server listening on port ${PORT}`);
-    
-    connectDB().then(async () => {
-      if (getDBStatus()) {
-        console.log("Database connected. Seeding if necessary...");
-        await seedData();
-      }
-    }).catch(err => {
-      console.error("Database connection/seeding failed:", err);
-    });
+    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`📝 Database status: ${getDBStatus() ? 'Connected' : 'Not connected'}`);
+    console.log(`📝 API URL: http://localhost:${PORT}/api/health`);
   });
 }
 
-// Start the server instance
 startServer();
 
-// Export app for serverless / testing
 export default app;

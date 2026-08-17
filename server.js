@@ -1056,9 +1056,22 @@ app.get("/api/health", async (req, res) => {
 });
 
 async function startServer() {
-  // Start Vite or Static serving
+  // ✅ Connect to database in ALL environments
+  console.log("🔄 Connecting to database...");
+  try {
+    await connectDB();
+    if (getDBStatus()) {
+      console.log("✅ Database connected successfully!");
+      await seedData();
+    } else {
+      console.log("⚠️ Database connection failed or not ready");
+    }
+  } catch (err) {
+    console.error("❌ Database connection failed:", err.message);
+  }
+
   if (process.env.NODE_ENV !== "production") {
-    console.log("Initializing Vite dev server...");
+    console.log("🔄 Initializing Vite dev server...");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -1066,33 +1079,53 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    console.log("Serving static production build from /dist...");
     const distPath = path.resolve(__dirname, "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+    console.log(`📁 Serving static from: ${distPath}`);
+    
+    if (!fs.existsSync(distPath)) {
+      console.error("❌ dist folder not found! Run 'npm run build' first.");
+      
+      app.get("*", (req, res) => {
+        if (req.path.startsWith('/api')) return;
+        res.status(200).send(`
+          <html>
+            <head><title>SmartFYP</title></head>
+            <body>
+              <h1>🚀 SmartFYP Application</h1>
+              <p>Build not found. Please rebuild the application.</p>
+              <p>API is available at <a href="/api/health">/api/health</a></p>
+            </body>
+          </html>
+        `);
+      });
+    } else {
+      app.use(express.static(distPath, {
+        maxAge: '1d',
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          }
+          if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          }
+        }
+      }));
+
+      app.get("*", (req, res, next) => {
+        if (req.path.startsWith('/api')) return next();
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
   }
 
-  // Global Error Handler
   app.use(errorHandler);
 
-  // Start listening (only when not running inside a serverless lambda wrapper)
-  if (!process.env.VERCEL) {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`\x1b[36m%s\x1b[0m`, `🚀 Server listening on http://0.0.0.0:${PORT}`);
-      
-      // Database & Seeding in background
-      connectDB().then(async () => {
-        if (getDBStatus()) {
-          console.log("Database connected. Seeding if necessary...");
-          await seedData();
-        }
-      }).catch(err => {
-        console.error("Database connection/seeding failed:", err);
-      });
-    });
-  }
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Server listening on port ${PORT}`);
+    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`📝 Database status: ${getDBStatus() ? '✅ Connected' : '❌ Not connected'}`);
+    console.log(`📝 API URL: http://localhost:${PORT}/api/health`);
+  });
 }
 
 // Start the server instance

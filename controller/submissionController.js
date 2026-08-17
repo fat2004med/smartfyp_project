@@ -10,15 +10,16 @@ export const getSubmissions = async (req, res) => {
   try {
     const { project } = req.query;
     const activeRole = req.activeRole || (req.user?.role ? req.user.role.split(',')[0].trim() : '');
+    const userRoles = req.user?.role ? req.user.role.split(',').map(r => r.trim()) : [];
     const { _id } = req.user;
     let query = {};
 
     if (project) {
       query.project = project;
     } else {
-      if (activeRole === 'Admin') {
+      if (userRoles.includes('Admin') || activeRole === 'Admin') {
         query = {};
-      } else if (activeRole === 'HOD') {
+      } else if (userRoles.includes('HOD') || activeRole === 'HOD') {
         let deptId = req.user.department?._id || req.user.department;
         if (!deptId) {
           const dept = await Department.findOne({ hod: _id });
@@ -26,11 +27,17 @@ export const getSubmissions = async (req, res) => {
         }
         if (deptId) {
           const deptProjects = await Project.find({ department: deptId });
-          query.project = { $in: deptProjects.map(p => p._id) };
+          const supervisedProjects = await Project.find({ supervisor: _id });
+          const allProjIds = Array.from(new Set([
+            ...deptProjects.map(p => p._id.toString()),
+            ...supervisedProjects.map(p => p._id.toString())
+          ]));
+          query.project = { $in: allProjIds };
         } else {
-          query.project = { $in: [] };
+          const supervisedProjects = await Project.find({ supervisor: _id });
+          query.project = { $in: supervisedProjects.map(p => p._id) };
         }
-      } else if (activeRole === 'Supervisor') {
+      } else if (userRoles.includes('Supervisor') || activeRole === 'Supervisor') {
         const supervisedProjects = await Project.find({ supervisor: _id });
         query.project = { $in: supervisedProjects.map(p => p._id) };
       } else {
@@ -45,55 +52,47 @@ export const getSubmissions = async (req, res) => {
       }
     }
 
-    // Apply granular slot visibility based on who created the slot and the current role/status
+    // Role-based visibility filtering only when NOT querying a specific project
     let roleFilter = {};
-    if (activeRole === 'Team Member') {
-      roleFilter = { submittedBy: _id };
-    } else if (activeRole === 'Team Leader') {
-      roleFilter = {
-        $or: [
-          { submittedBy: _id },
-          { status: { $ne: 'Not Submitted' } }
-        ]
-      };
-    } else if (activeRole === 'Supervisor') {
-      roleFilter = {
-        $or: [
-          { submittedBy: _id },
-          { status: { $in: ["Pending Supervisor", "Pending HOD", "Pending Admin", "Approved", "Rejected"] } }
-        ]
-      };
-    } else if (activeRole === 'HOD') {
-      roleFilter = {
-        status: { $in: ["Pending HOD", "Pending Admin", "Approved", "Rejected"] },
-        isFinalDocumentation: true
-      };
-    } else if (activeRole === 'Admin') {
-      roleFilter = {
-        status: { $in: ["Pending Admin", "Approved", "Rejected"] },
-        isFinalDocumentation: true
-      };
+    if (!project) {
+      if (activeRole === 'Team Member') {
+        roleFilter = { submittedBy: _id };
+      } else if (activeRole === 'Team Leader') {
+        roleFilter = {
+          $or: [
+            { submittedBy: _id },
+            { status: { $ne: 'Not Submitted' } }
+          ]
+        };
+      } else if (activeRole === 'Supervisor') {
+        roleFilter = {
+          $or: [
+            { submittedBy: _id },
+            { status: { $in: ["Pending Supervisor", "Pending HOD", "Pending Admin", "Approved", "Rejected", "Submitted"] } }
+          ]
+        };
+      } else if (activeRole === 'HOD') {
+        roleFilter = {
+          status: { $in: ["Pending Supervisor", "Pending HOD", "Pending Admin", "Approved", "Rejected", "Submitted"] }
+        };
+      }
     }
 
-    // Enforce strict data isolation combining the project query and status/role filter using $and
-    const finalQuery = {
-      $and: [
-        query,
-        roleFilter
-      ]
-    };
+    const finalQuery = Object.keys(roleFilter).length > 0 
+      ? { $and: [query, roleFilter] }
+      : query;
 
     const submissions = await Submission.find(finalQuery)
       .populate({
         path: "project",
-        select: "title department supervisor teamLeader members academicYear batch",
+        select: "title department supervisor teamLeader members academicYear batch status currentPhase isApprovedBySupervisor isApprovedByHOD isApprovedByAdmin",
         populate: [
           { path: "department", select: "name" },
-          { path: "supervisor", select: "name" },
-          { path: "teamLeader", select: "name" }
+          { path: "supervisor", select: "name email role" },
+          { path: "teamLeader", select: "name email role" }
         ]
       })
-      .populate("submittedBy", "name role")
+      .populate("submittedBy", "name role email")
       .populate({
         path: "feedbacks",
         populate: { path: "author", select: "name role" }
@@ -112,8 +111,8 @@ export const getSubmissions = async (req, res) => {
 export const getSubmissionById = async (req, res) => {
   try {
     const submission = await Submission.findById(req.params.id)
-       .populate("project")
-       .populate("submittedBy", "name role")
+      .populate("project")
+      .populate("submittedBy", "name role email")
       .populate({
         path: "feedbacks",
         populate: { path: "author", select: "name role" }
@@ -133,16 +132,23 @@ export const getSubmissionById = async (req, res) => {
 };
 
 const syncFinalDocumentation = async (projectId, submission) => {
-  if (!submission.isFinalDocumentation) return;
+  if (!submission || !submission.isFinalDocumentation) return;
   try {
-    const project = await Project.findById(projectId);
+    const targetProjId = projectId || submission.project?._id || submission.project;
+    if (!targetProjId) return;
+
+    const project = await Project.findById(targetProjId);
     if (!project) return;
 
-    const submitter = await User.findById(submission.submittedBy);
-    const submittedByName = submitter ? submitter.name : "Unknown";
+    let submittedByName = "Unknown";
+    if (submission.submittedBy) {
+      const submitter = await User.findById(submission.submittedBy?._id || submission.submittedBy);
+      if (submitter) submittedByName = submitter.name;
+    }
 
+    project.finalDocumentations = project.finalDocumentations || [];
     const existingIndex = project.finalDocumentations.findIndex(
-      doc => doc.submissionId.toString() === submission._id.toString()
+      doc => doc && doc.submissionId && doc.submissionId.toString() === submission._id.toString()
     );
 
     const docData = {
@@ -150,23 +156,26 @@ const syncFinalDocumentation = async (projectId, submission) => {
       title: submission.title,
       semester: submission.semester,
       fileUrl: submission.fileUrl,
-      links: submission.links,
+      links: submission.links || [],
       submittedBy: submittedByName,
       approvedBySupervisorAt: new Date(),
       status: submission.status,
       approvals: submission.approvals || [],
-      history: submission.history.map(h => ({
+      history: (submission.history || []).map(h => ({
         fileUrl: h.fileUrl,
-        links: h.links,
-        submittedAt: h.submittedAt,
-        version: h.version,
-        comment: h.comment
+        links: h.links || [],
+        submittedAt: h.submittedAt || new Date(),
+        version: h.version || 1,
+        comment: h.comment || ""
       }))
     };
 
     if (existingIndex > -1) {
+      const existingObj = project.finalDocumentations[existingIndex].toObject 
+        ? project.finalDocumentations[existingIndex].toObject() 
+        : project.finalDocumentations[existingIndex];
       project.finalDocumentations[existingIndex] = {
-        ...project.finalDocumentations[existingIndex].toObject(),
+        ...existingObj,
         ...docData
       };
     } else {
@@ -174,13 +183,13 @@ const syncFinalDocumentation = async (projectId, submission) => {
     }
 
     // Automatically sync approval indicators in Project model so dashboards match immediately
-    const isSupApproved = submission.approvals?.some(a => a.role === 'Supervisor' && a.status === 'Approved') || 
+    const isSupApproved = (submission.approvals || []).some(a => a.role === 'Supervisor' && a.status === 'Approved') || 
                           ['Pending HOD', 'Pending Admin', 'Approved'].includes(submission.status);
 
-    const isHODApproved = submission.approvals?.some(a => a.role === 'HOD' && a.status === 'Approved') || 
+    const isHODApproved = (submission.approvals || []).some(a => a.role === 'HOD' && a.status === 'Approved') || 
                           ['Pending Admin', 'Approved'].includes(submission.status);
 
-    const isAdminApproved = submission.approvals?.some(a => a.role === 'Admin' && a.status === 'Approved') || 
+    const isAdminApproved = (submission.approvals || []).some(a => a.role === 'Admin' && a.status === 'Approved') || 
                             submission.status === 'Approved';
 
     project.isApprovedBySupervisor = isSupApproved;
@@ -196,7 +205,6 @@ const syncFinalDocumentation = async (projectId, submission) => {
     }
 
     await project.save();
-    console.log(`Synced final documentation and approval flags for project: ${project.title}`);
   } catch (error) {
     console.error("Error syncing final documentation:", error);
   }
@@ -398,21 +406,48 @@ export const resubmitSubmission = async (req, res) => {
 
 export const approveSubmission = async (req, res) => {
   try {
-    const submission = await Submission.findById(req.params.id).populate("project");
+    const submission = await Submission.findById(req.params.id).populate({
+      path: "project",
+      populate: [
+        { path: "department", select: "name hod" },
+        { path: "supervisor", select: "name email role" },
+        { path: "teamLeader", select: "name email role" }
+      ]
+    });
     if (!submission) return res.status(404).json({ message: "Submission not found" });
 
-    // Determine the role for this approval.
-    // If an HOD is the project supervisor and the submission is currently "Pending Supervisor", they are acting as the Supervisor.
-    let approvalRole = req.activeRole || (req.user?.role ? req.user.role.split(',')[0].trim() : '');
-    const isHODActingAsSupervisor = (approvalRole === "HOD" || approvalRole === "Supervisor" || req.user.role.includes("HOD")) && 
-      submission.project && 
-      submission.project.supervisor && 
-      submission.project.supervisor.toString() === req.user._id.toString() && 
-      submission.status === "Pending Supervisor";
-
-    if (isHODActingAsSupervisor) {
-      approvalRole = "Supervisor";
+    // If request actually intended rejection (e.g. from review queues passing status: 'Rejected')
+    if (req.body.status === 'Rejected') {
+      return rejectSubmission(req, res);
     }
+
+    const userRoles = req.user?.role ? req.user.role.split(',').map(r => r.trim()) : [];
+    let activeRole = req.activeRole || (userRoles[0] || '');
+
+    const isSupervisor = (submission.project?.supervisor && (
+      (submission.project.supervisor._id && submission.project.supervisor._id.toString() === req.user._id.toString()) ||
+      submission.project.supervisor.toString() === req.user._id.toString()
+    ));
+
+    const isHOD = userRoles.includes("HOD") || activeRole === "HOD";
+    const isAdmin = userRoles.includes("Admin") || activeRole === "Admin";
+    const isTeamLeader = userRoles.includes("Team Leader") || activeRole === "Team Leader";
+
+    // Determine the effective role for this approval
+    let approvalRole = activeRole;
+    if (isAdmin) {
+      approvalRole = "Admin";
+    } else if (isSupervisor && submission.status === "Pending Supervisor") {
+      approvalRole = "Supervisor";
+    } else if (isHOD && (submission.status === "Pending HOD" || !isSupervisor)) {
+      approvalRole = "HOD";
+    } else if (isTeamLeader && submission.status === "Pending TL") {
+      approvalRole = "Team Leader";
+    }
+
+    // Initialize arrays if missing
+    submission.approvals = submission.approvals || [];
+    submission.feedbacks = submission.feedbacks || [];
 
     // Mark as approved at current level
     submission.approvals = submission.approvals.filter(a => a.role !== approvalRole);
@@ -424,38 +459,42 @@ export const approveSubmission = async (req, res) => {
     });
 
     // Add grade and score if provided
-    if (req.body.grade) submission.grade = req.body.grade;
-    if (req.body.score) submission.score = req.body.score;
+    if (req.body.grade !== undefined && req.body.grade !== null) {
+      submission.grade = req.body.grade;
+    }
+    if (req.body.score !== undefined && req.body.score !== null && req.body.score !== '') {
+      submission.score = Number(req.body.score);
+    }
 
     // Add feedback if provided
-    if (req.body.feedback) {
-      const feedback = await Feedback.create({
-        submission: submission._id,
-        author: req.user._id,
-        content: req.body.feedback,
-        role: approvalRole,
-        type: 'Review'
-      });
-      submission.feedbacks.push(feedback._id);
+    if (req.body.feedback && req.body.feedback.trim()) {
+      try {
+        const feedback = await Feedback.create({
+          submission: submission._id,
+          author: req.user._id,
+          content: req.body.feedback.trim(),
+          role: approvalRole,
+          type: 'Review'
+        });
+        submission.feedbacks.push(feedback._id);
+      } catch (fbErr) {
+        console.error("Error creating feedback record:", fbErr);
+      }
     }
 
     let message = `Your submission "${submission.title}" was approved by ${approvalRole}.`;
-    let notifyTarget = submission.submittedBy;
+    let notifyTarget = submission.submittedBy?._id || submission.submittedBy;
 
     if (approvalRole === "Team Leader") {
-      // Automatic progress to supervisor
       submission.status = "Pending Supervisor";
-      notifyTarget = submission.project?.supervisor;
+      notifyTarget = submission.project?.supervisor?._id || submission.project?.supervisor;
       message = `Team Leader approved "${submission.title}". It is now pending supervisor review.`;
-    } else if (approvalRole === "Supervisor" || isHODActingAsSupervisor) {
+    } else if (approvalRole === "Supervisor") {
       if (submission.isFinalDocumentation) {
         submission.status = "Pending HOD";
-        const deptProject = await Project.findById(submission.project?._id).populate({
-          path: 'department',
-          populate: { path: 'hod' }
-        });
-        if (deptProject?.department?.hod) {
-          notifyTarget = deptProject.department.hod._id || deptProject.department.hod;
+        const deptHod = submission.project?.department?.hod;
+        if (deptHod) {
+          notifyTarget = deptHod._id || deptHod;
         }
         message = `Supervisor approved final documentation "${submission.title}". It is now pending HOD review.`;
       } else {
@@ -475,31 +514,68 @@ export const approveSubmission = async (req, res) => {
     } else if (approvalRole === "Admin") {
       submission.status = "Approved";
       message = `Admin approved your submission "${submission.title}".`;
+    } else {
+      // Fallback
+      submission.status = "Approved";
     }
 
+    submission.markModified('approvals');
+    submission.markModified('feedbacks');
     await submission.save();
 
     if (submission.isFinalDocumentation) {
-      await syncFinalDocumentation(submission.project?._id, submission);
+      await syncFinalDocumentation(submission.project?._id || submission.project, submission);
     }
 
+    // Safely send notification
     if (notifyTarget) {
-      const targetUser = await User.findById(notifyTarget);
-      const targetRole = targetUser ? targetUser.role : "Team Leader";
-      await Notification.create({
-        recipient: notifyTarget,
-        sender: req.user._id,
-        title: "Submission Status Update",
-        message,
-        type: "Submission",
-        link: "/submissions",
-        targetRole: targetRole
-      });
+      try {
+        const targetUser = await User.findById(notifyTarget);
+        const targetRole = targetUser ? (targetUser.role?.split(',')[0].trim()) : "General";
+        await Notification.create({
+          recipient: notifyTarget,
+          sender: req.user._id,
+          title: "Submission Status Update",
+          message,
+          type: "Submission",
+          link: "/submissions",
+          targetRole: targetRole
+        });
+      } catch (notifErr) {
+        console.error("Error creating approval notification:", notifErr);
+      }
     }
 
-    res.json(submission);
+    // Always also notify the submitter if the next approver was notified
+    const submitterId = submission.submittedBy?._id || submission.submittedBy;
+    if (submitterId && notifyTarget && notifyTarget.toString() !== submitterId.toString()) {
+      try {
+        await Notification.create({
+          recipient: submitterId,
+          sender: req.user._id,
+          title: "Submission Status Update",
+          message: `Your submission "${submission.title}" was approved by ${approvalRole} and moved to ${submission.status}.`,
+          type: "Submission",
+          link: "/submissions",
+          targetRole: "Team Leader"
+        });
+      } catch (notifErr2) {
+        console.error("Error creating submitter notification:", notifErr2);
+      }
+    }
+
+    const populatedSubmission = await Submission.findById(submission._id)
+      .populate("project")
+      .populate("submittedBy", "name role email")
+      .populate({
+        path: "feedbacks",
+        populate: { path: "author", select: "name role" }
+      });
+
+    res.json(populatedSubmission || submission);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error in approveSubmission:", error);
+    res.status(500).json({ message: error.message || "Failed to approve submission" });
   }
 };
 
@@ -511,26 +587,25 @@ export const forwardSubmission = async (req, res) => {
     let nextStatus = "";
     let recipient = null;
 
-    const activeRole = req.activeRole || (req.user?.role ? req.user.role.split(',')[0].trim() : '');
-    const isHODActingAsSupervisor = (activeRole === "HOD" || activeRole === "Supervisor" || req.user.role.includes("HOD")) && 
-      submission.project && 
-      submission.project.supervisor && 
-      submission.project.supervisor.toString() === req.user._id.toString() && 
-      submission.status === "Pending Supervisor";
+    const userRoles = req.user?.role ? req.user.role.split(',').map(r => r.trim()) : [];
+    const activeRole = req.activeRole || (userRoles[0] || '');
+    
+    const isSupervisor = (submission.project?.supervisor && (
+      (submission.project.supervisor._id && submission.project.supervisor._id.toString() === req.user._id.toString()) ||
+      submission.project.supervisor.toString() === req.user._id.toString()
+    ));
 
-    if (activeRole === "Supervisor" || isHODActingAsSupervisor) {
+    if (activeRole === "Supervisor" || isSupervisor) {
       nextStatus = "Pending HOD";
-      // Find HOD of project's department
-      const deptProject = await Project.findById(submission.project._id).populate({
+      const deptProject = await Project.findById(submission.project._id || submission.project).populate({
         path: 'department',
         populate: { path: 'hod' }
       });
-      if (deptProject.department && deptProject.department.hod) {
+      if (deptProject?.department?.hod) {
         recipient = deptProject.department.hod._id || deptProject.department.hod;
       }
-    } else if (activeRole === "HOD") {
+    } else if (activeRole === "HOD" || userRoles.includes("HOD")) {
       nextStatus = "Pending Admin";
-      // Notify an Admin 
       const admin = await User.findOne({ role: "Admin" });
       if (admin) recipient = admin._id;
     }
@@ -541,68 +616,109 @@ export const forwardSubmission = async (req, res) => {
     await submission.save();
 
     if (submission.isFinalDocumentation) {
-      await syncFinalDocumentation(submission.project?._id, submission);
+      await syncFinalDocumentation(submission.project?._id || submission.project, submission);
     }
 
     if (recipient) {
-      await Notification.create({
-        recipient,
-        sender: req.user._id,
-        title: "Submission Escalated",
-        message: `Submission "${submission.title}" has been escalated to you for department verification.`,
-        type: "Submission",
-        link: "/submissions",
-        targetRole: nextStatus === "Pending HOD" ? "HOD" : "Admin"
-      });
+      try {
+        await Notification.create({
+          recipient,
+          sender: req.user._id,
+          title: "Submission Escalated",
+          message: `Submission "${submission.title}" has been escalated to you for department verification.`,
+          type: "Submission",
+          link: "/submissions",
+          targetRole: nextStatus === "Pending HOD" ? "HOD" : "Admin"
+        });
+      } catch (notifErr) {
+        console.error("Error creating forward notification:", notifErr);
+      }
     }
 
     res.json(submission);
   } catch (error) {
+    console.error("Error in forwardSubmission:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
 export const rejectSubmission = async (req, res) => {
   try {
-    const submission = await Submission.findById(req.params.id);
+    const submission = await Submission.findById(req.params.id).populate("project");
     if (!submission) return res.status(404).json({ message: "Submission not found" });
 
+    const userRoles = req.user?.role ? req.user.role.split(',').map(r => r.trim()) : [];
+    const activeRole = req.activeRole || (userRoles[0] || '');
+
     submission.status = "Rejected";
+    submission.approvals = submission.approvals || [];
+    submission.feedbacks = submission.feedbacks || [];
+
+    // Track rejection in approvals history
+    submission.approvals = submission.approvals.filter(a => a.role !== activeRole);
+    submission.approvals.push({
+      role: activeRole,
+      approvedBy: req.user._id,
+      status: "Rejected",
+      timestamp: new Date()
+    });
     
     // Add feedback if provided during rejection
-    if (req.body.feedback) {
-      const feedback = await Feedback.create({
-        submission: submission._id,
-        author: req.user._id,
-        content: req.body.feedback,
-        role: req.activeRole || (req.user?.role ? req.user.role.split(',')[0].trim() : ''),
-        type: 'Review'
-      });
-      submission.feedbacks.push(feedback._id);
+    if (req.body.feedback && req.body.feedback.trim()) {
+      try {
+        const feedback = await Feedback.create({
+          submission: submission._id,
+          author: req.user._id,
+          content: req.body.feedback.trim(),
+          role: activeRole,
+          type: 'Review'
+        });
+        submission.feedbacks.push(feedback._id);
+      } catch (fbErr) {
+        console.error("Error creating rejection feedback:", fbErr);
+      }
     }
     
+    submission.markModified('approvals');
+    submission.markModified('feedbacks');
     await submission.save();
 
     if (submission.isFinalDocumentation) {
-      await syncFinalDocumentation(submission.project, submission);
+      await syncFinalDocumentation(submission.project?._id || submission.project, submission);
     }
 
-    // Notify submittor
-    const targetUser = await User.findById(submission.submittedBy);
-    const targetRole = targetUser ? targetUser.role : "Team Leader";
-    await Notification.create({
-      recipient: submission.submittedBy,
-      sender: req.user._id,
-      title: "Submission Rejected",
-      message: `Your submission "${submission.title}" was rejected by ${req.activeRole || (req.user?.role ? req.user.role.split(',')[0].trim() : '')}. Please check feedback and resubmit.`,
-      type: "Submission",
-      link: "/submissions",
-      targetRole: targetRole
-    });
+    // Notify submitter safely
+    const submitterId = submission.submittedBy?._id || submission.submittedBy;
+    if (submitterId) {
+      try {
+        const targetUser = await User.findById(submitterId);
+        const targetRole = targetUser ? (targetUser.role?.split(',')[0].trim()) : "Team Leader";
+        await Notification.create({
+          recipient: submitterId,
+          sender: req.user._id,
+          title: "Submission Rejected",
+          message: `Your submission "${submission.title}" was rejected by ${activeRole}. Please check feedback and resubmit.`,
+          type: "Submission",
+          link: "/submissions",
+          targetRole: targetRole
+        });
+      } catch (notifErr) {
+        console.error("Error sending rejection notification:", notifErr);
+      }
+    }
 
-    res.json(submission);
+    const populatedSubmission = await Submission.findById(submission._id)
+      .populate("project")
+      .populate("submittedBy", "name role email")
+      .populate({
+        path: "feedbacks",
+        populate: { path: "author", select: "name role" }
+      });
+
+    res.json(populatedSubmission || submission);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error in rejectSubmission:", error);
+    res.status(500).json({ message: error.message || "Failed to reject submission" });
   }
 };
 

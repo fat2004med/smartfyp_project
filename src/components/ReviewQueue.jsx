@@ -27,10 +27,13 @@ const ReviewQueue = () => {
   const [loading, setLoading] = useState(true);
   const [feedbackText, setFeedbackText] = useState('');
 
+  const [reviewScore, setReviewScore] = useState('');
+  const [reviewGrade, setReviewGrade] = useState('');
+
   const fetchReviews = async () => {
     try {
       const { data } = await axios.get('/api/submissions');
-      setReviews(data);
+      setReviews(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching reviews:', error);
     } finally {
@@ -39,39 +42,70 @@ const ReviewQueue = () => {
   };
 
   useEffect(() => {
-    const init = async () => {
-      await fetchReviews();
-    };
-    init();
+    fetchReviews();
   }, []);
+
+  const isPendingStatus = (status) => {
+    return status?.startsWith('Pending') || status === 'Submitted';
+  };
 
   const handleReviewAction = async (submissionId, status) => {
     try {
-      await axios.put(`/api/submissions/${submissionId}/approve`, { status, feedback: feedbackText });
-      fetchReviews();
+      if (status === 'Rejected') {
+        if (!feedbackText.trim()) {
+          return toast.error('Feedback comment is required when rejecting a submission');
+        }
+        await axios.put(`/api/submissions/${submissionId}/reject`, { 
+          feedback: feedbackText.trim() 
+        });
+        toast.success('Submission rejected successfully');
+      } else {
+        await axios.put(`/api/submissions/${submissionId}/approve`, { 
+          status: 'Approved', 
+          feedback: feedbackText.trim(),
+          score: reviewScore ? Number(reviewScore) : undefined,
+          grade: reviewGrade || undefined
+        });
+        toast.success('Submission approved successfully');
+      }
+      await fetchReviews();
       setSelectedReview(null);
       setFeedbackText('');
-      toast.success(`Submission ${status.toLowerCase()} successfully`);
+      setReviewScore('');
+      setReviewGrade('');
     } catch (error) {
-       toast.error(error.response?.data?.message || 'Action failed');
+       console.error('Action error:', error);
+       toast.error(error.response?.data?.message || `Failed to ${status.toLowerCase()} submission`);
     }
   };
 
   const filteredReviews = reviews.filter(review => {
-    const matchesSearch = review.project?.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          review.phase?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === 'All' || review.status === filterStatus;
+    const title = review.project?.title || review.title || review.phase || '';
+    const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (review.phase && review.phase.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    let matchesFilter = true;
+    if (filterStatus === 'All') {
+      matchesFilter = true;
+    } else if (filterStatus === 'Pending') {
+      matchesFilter = isPendingStatus(review.status);
+    } else {
+      matchesFilter = review.status === filterStatus;
+    }
+
     return matchesSearch && matchesFilter;
   });
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Approved': return 'bg-green-100 text-green-600 border-green-200';
-      case 'Rejected': return 'bg-red-100 text-red-600 border-red-200';
-      case 'Reviewing': return 'bg-blue-100 text-blue-600 border-blue-200';
-      default: return 'bg-amber-100 text-amber-600 border-amber-200';
+      case 'Approved': return 'bg-green-100 text-green-700 border-green-200';
+      case 'Rejected': return 'bg-red-100 text-red-700 border-red-200';
+      case 'Reviewing': return 'bg-blue-100 text-blue-700 border-blue-200';
+      default: return 'bg-amber-100 text-amber-700 border-amber-200';
     }
   };
+
+  const pendingCount = reviews.filter(r => isPendingStatus(r.status)).length;
 
   return (
     <div className="space-y-6">
@@ -82,7 +116,7 @@ const ReviewQueue = () => {
         </div>
         <div className="flex items-center gap-2">
           <span className="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg shadow-blue-200">
-            {reviews.filter(r => r.status === 'Pending').length} Pending
+            {pendingCount} Pending
           </span>
         </div>
       </div>
@@ -94,7 +128,7 @@ const ReviewQueue = () => {
           <input 
             type="text"
             placeholder="Search by group or document name..."
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -102,13 +136,15 @@ const ReviewQueue = () => {
         <div className="flex items-center gap-2">
           <Filter size={18} className="text-gray-400" />
           <select 
-            className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium text-gray-700"
+            className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium text-gray-700 text-sm"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
-            <option value="All">All Status</option>
-            <option value="Pending">Pending</option>
-            <option value="Reviewing">Reviewing</option>
+            <option value="All">All Statuses</option>
+            <option value="Pending">All Pending</option>
+            <option value="Pending Supervisor">Pending Supervisor</option>
+            <option value="Pending HOD">Pending HOD</option>
+            <option value="Pending Admin">Pending Admin</option>
             <option value="Approved">Approved</option>
             <option value="Rejected">Rejected</option>
           </select>
@@ -276,42 +312,66 @@ const ReviewQueue = () => {
                         />
                       </div>
 
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Score (Optional)</label>
+                          <input 
+                            type="number"
+                            placeholder="e.g. 85"
+                            className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold"
+                            value={reviewScore}
+                            onChange={(e) => setReviewScore(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Grade (Optional)</label>
+                          <input 
+                            type="text"
+                            placeholder="e.g. A, B+"
+                            className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold"
+                            value={reviewGrade}
+                            onChange={(e) => setReviewGrade(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-200">
                         <button 
                           onClick={async () => {
                             if (!feedbackText.trim()) return;
                             try {
-                              await axios.post(`/api/submissions/${review._id}/feedback`, { content: feedbackText });
+                              await axios.post(`/api/submissions/${review._id}/feedback`, { content: feedbackText.trim() });
                               toast.success('Feedback posted successfully');
                               setFeedbackText('');
                               fetchReviews();
                             } catch (error) {
-                              toast.error('Failed to post feedback');
+                              toast.error(error.response?.data?.message || 'Failed to post feedback');
                             }
                           }}
-                          disabled={!feedbackText.trim() || userAlreadyReviewed}
-                          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-amber-600 hover:bg-amber-50 disabled:opacity-50 transition-all border border-amber-100"
+                          disabled={!feedbackText.trim()}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-amber-600 hover:bg-amber-50 disabled:opacity-50 transition-all border border-amber-100 cursor-pointer"
                         >
                           <MessageSquare size={18} />
-                          Just Feedback
+                          Post Feedback Only
                         </button>
-                        {review.status === 'Approved' || review.status === 'Rejected' || userAlreadyReviewed ? (
-                          <div className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-xl text-gray-500 border border-gray-200 font-bold text-xs select-none">
-                            <span>🔒 Decision Locked ({userAlreadyReviewed ? 'Feedback Left' : review.status})</span>
+
+                        {review.status === 'Approved' || review.status === 'Rejected' ? (
+                          <div className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-xl text-gray-600 border border-gray-200 font-bold text-xs select-none">
+                            <span>Status: {review.status}</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-3">
                             <button 
                               onClick={() => handleReviewAction(review._id, 'Rejected')}
                               disabled={!feedbackText.trim()}
-                              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-all"
+                              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-all border border-red-200 cursor-pointer disabled:cursor-not-allowed"
                             >
                               <XCircle size={18} />
                               Reject
                             </button>
                             <button 
                               onClick={() => handleReviewAction(review._id, 'Approved')}
-                              className="flex items-center gap-2 bg-blue-600 text-white px-8 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                              className="flex items-center gap-2 bg-blue-600 text-white px-8 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 cursor-pointer"
                             >
                               <CheckCircle size={18} />
                               Approve

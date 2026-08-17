@@ -63,11 +63,25 @@ export const AuthProvider = ({ children }) => {
     // Axios interceptor for request
     const reqInterceptor = axios.interceptors.request.use(
       (config) => {
+        const storedUser = localStorage.getItem('smartfyp_user');
+        if (storedUser) {
+          try {
+            const parsed = JSON.parse(storedUser);
+            if (parsed?.token) {
+              config.headers = config.headers || {};
+              config.headers['Authorization'] = `Bearer ${parsed.token}`;
+            }
+          } catch (e) {
+            // ignore JSON error
+          }
+        }
+
         const storedRole = localStorage.getItem('activeDashboardRole');
         if (storedRole) {
+          config.headers = config.headers || {};
           config.headers['X-Selected-Role'] = storedRole;
           config.headers['X-Active-Role'] = storedRole;
-        } else {
+        } else if (config.headers) {
           delete config.headers['X-Selected-Role'];
           delete config.headers['X-Active-Role'];
         }

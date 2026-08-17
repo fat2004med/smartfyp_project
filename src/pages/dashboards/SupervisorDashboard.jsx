@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
 import { Routes, Route, useLocation } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import Announcements from '../../components/Announcements';
 import ProjectRecords from '../../components/ProjectRecords';
 import Feedback from '../../components/Feedback';
@@ -44,28 +45,35 @@ const DashboardOverview = ({ stats, monthlyTrend, reviews = [], projects = [], o
 
   const handleAction = async (actionType) => {
     if (!activeReview) return;
+    const reviewId = activeReview.id || activeReview._id;
+    if (!reviewId) {
+      toast.error("Submission ID not found.");
+      return;
+    }
     setReviewStatus('submitting');
     try {
       if (actionType === 'approve') {
-        await axios.put(`/api/submissions/${activeReview.id}/approve`, {
-          grade: reviewGrade,
-          score: Number(reviewScore),
+        await axios.put(`/api/submissions/${reviewId}/approve`, {
+          grade: reviewGrade || undefined,
+          score: reviewScore ? Number(reviewScore) : undefined,
           feedback: reviewFeedback
         });
+        toast.success("Submission approved successfully!");
       } else {
-        await axios.put(`/api/submissions/${activeReview.id}/reject`, {
+        await axios.put(`/api/submissions/${reviewId}/reject`, {
           feedback: reviewFeedback || "Changes requested by Supervisor."
         });
+        toast.success("Submission rejected.");
       }
       setReviewStatus('success');
       setTimeout(() => {
         setActiveReview(null);
         setReviewStatus('idle');
         if (onReviewSuccess) onReviewSuccess();
-      }, 1500);
+      }, 1200);
     } catch (err) {
       console.error("Error submitting review action:", err);
-      alert(err.response?.data?.message || "Failed to process review.");
+      toast.error(err.response?.data?.message || "Failed to process review.");
       setReviewStatus('idle');
     }
   };
@@ -462,26 +470,34 @@ const SupervisorDashboard = () => {
   const triggerRefresh = () => setRefreshTrigger(prev => prev + 1);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchStatsAndProjects = async () => {
       try {
         const statsRes = await axios.get(`/api/dashboard/supervisor?t=${Date.now()}`);
-        setStatsData(statsRes.data);
+        if (isMounted) setStatsData(statsRes.data);
         
         const projectsRes = await axios.get('/api/projects');
-        setProjects(projectsRes.data);
+        if (isMounted) setProjects(projectsRes.data);
       } catch (error) {
-        console.error('Error fetching supervisor dashboard info:', error);
+        if (error.response?.status !== 401 && error.response?.status !== 403) {
+          console.error('Error fetching supervisor dashboard info:', error);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchStatsAndProjects();
 
-    const intervalId = setInterval(fetchStatsAndProjects, 5000);
+    const isRoot = location.pathname === '/dashboard/supervisor' || location.pathname === '/dashboard/supervisor/';
+    let intervalId;
+    if (isRoot) {
+      intervalId = setInterval(fetchStatsAndProjects, 8000);
+    }
 
     return () => {
-      clearInterval(intervalId);
+      isMounted = false;
+      if (intervalId) clearInterval(intervalId);
     };
   }, [location.pathname, refreshTrigger]);
 

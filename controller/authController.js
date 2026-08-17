@@ -1,6 +1,6 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
-import sendEmail from "../utils/sendEmail.js";
+import sendEmail, { getEmailConfig } from "../utils/sendEmail.js";
 import { logEvent } from "../utils/logger.js";
 import { validatePassword } from "../utils/passwordValidator.js";
 import { getPortalBaseUrl } from "../utils/portalUrl.js";
@@ -389,3 +389,63 @@ export const updatePassword = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const getEmailStatus = async (req, res) => {
+  try {
+    const config = getEmailConfig();
+    const baseUrl = getPortalBaseUrl(req);
+    res.json({
+      configured: config.isConfigured,
+      smtpUser: config.user ? `${config.user.substring(0, 3)}***@${config.user.split('@')[1] || 'domain'}` : null,
+      smtpHost: config.host || "smtp.gmail.com",
+      smtpPort: config.port,
+      smtpService: config.service || "gmail",
+      portalUrl: baseUrl,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const testSendEmail = async (req, res) => {
+  const { targetEmail } = req.body;
+  const recipient = targetEmail || req.user?.email;
+
+  if (!recipient) {
+    return res.status(400).json({ message: "Target email address is required." });
+  }
+
+  try {
+    const baseUrl = getPortalBaseUrl(req);
+    const result = await sendEmail({
+      email: recipient,
+      subject: "SmartFYP - SMTP Service Test Email",
+      message: `Hello,\n\nThis is a test email dispatched from SmartFYP Academic Portal (${baseUrl}) to confirm that your SMTP email service is active and working properly.\n\nTime sent: ${new Date().toISOString()}\n\nBest regards,\nSmartFYP Team`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background-color: #f8fafc;">
+          <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 28px;">
+            <h2 style="color: #2563eb; margin-top: 0;">SMTP Test Successful!</h2>
+            <p>This is a verification email from <strong>SmartFYP Academic Portal</strong>.</p>
+            <div style="background: #f1f5f9; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 13px;">
+              <p style="margin: 4px 0;">Portal URL: ${baseUrl}</p>
+              <p style="margin: 4px 0;">Recipient: ${recipient}</p>
+              <p style="margin: 4px 0;">Timestamp: ${new Date().toISOString()}</p>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+
+    res.json({
+      success: true,
+      message: `Test email successfully dispatched to ${recipient}!`,
+      details: result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+

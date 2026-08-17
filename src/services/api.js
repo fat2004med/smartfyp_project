@@ -82,17 +82,19 @@ const handleResponseSuccess = (response) => response;
 const handleResponseError = (error) => {
   const status = error.response?.status;
   const message = error.response?.data?.message || error.message || 'Unknown network error';
+  const url = error.config?.url || '';
+
+  // Skip noisy logs for benign 404 queries or cancelations
+  const isMutedUrl = url.includes('/api/projects/my-project') || url.includes('/api/notifications');
 
   if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-    console.error(`[API Error] ❌ TIMEOUT: ${message}`);
-  } else if (status) {
-    console.error(`[API Error] ❌ ${status}: ${message}`);
-  } else {
-    console.error(`[API Error] ❌ NETWORK: ${message}`);
+    console.warn(`[API Warning] TIMEOUT: ${message}`);
+  } else if (status && !isMutedUrl) {
+    console.warn(`[API Info] ${status}: ${message}`);
   }
 
   // Auto redirect to login on token expiration
-  if (status === 401 && !error.config?.url?.includes('/api/auth/login')) {
+  if (status === 401 && !url.includes('/api/auth/login') && !url.includes('/api/auth/check')) {
     localStorage.removeItem('smartfyp_user');
     localStorage.removeItem('activeDashboardRole');
     if (typeof window !== 'undefined' && window.location.pathname !== '/login') {

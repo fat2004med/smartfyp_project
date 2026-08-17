@@ -194,16 +194,18 @@ const ProjectSubmission = () => {
 
         if (reviewForm.status === 'Approved') {
           await axios.put(`/api/submissions/${selectedDoc._id}/approve`, reviewData);
+          toast.success('Submission approved successfully!');
         } else {
           await axios.put(`/api/submissions/${selectedDoc._id}/reject`, { feedback: reviewForm.feedback });
+          toast.success('Submission rejected successfully!');
         }
-        toast.success('Review submitted successfully!');
       }
       
       setIsReviewModalOpen(false);
       fetchProjectData();
     } catch (error) {
-      toast.error('Error submitting review');
+      console.error('Error submitting review:', error);
+      toast.error(error.response?.data?.message || 'Error submitting review');
     } finally {
       setIsSubmitting(false);
     }
@@ -313,10 +315,11 @@ const ProjectSubmission = () => {
   };
 
   const canReview = (status) => {
-    if (activeRole === 'Team Leader' && status === 'Pending TL') return true;
-    if (activeRole === 'Supervisor' && status === 'Pending Supervisor') return true;
-    if (activeRole === 'HOD' && status === 'Pending HOD') return true;
-    if (activeRole === 'Admin' && status === 'Pending Admin') return true;
+    if (!status || status === 'Not Submitted') return false;
+    if (activeRole === 'Admin') return ['Pending TL', 'Pending Supervisor', 'Pending HOD', 'Pending Admin', 'Pending', 'Submitted'].includes(status);
+    if (activeRole === 'HOD') return ['Pending HOD', 'Pending Supervisor', 'Pending', 'Submitted'].includes(status);
+    if (activeRole === 'Supervisor') return ['Pending Supervisor', 'Pending', 'Submitted'].includes(status);
+    if (activeRole === 'Team Leader') return ['Pending TL', 'Pending', 'Submitted'].includes(status);
     return false;
   };
 
@@ -910,11 +913,15 @@ const ProjectSubmission = () => {
                 <div className="flex gap-4 pt-2">
                   <button 
                     type="submit"
-                    disabled={isSubmitting || !reviewForm.feedback.trim()}
-                    className={`flex-1 py-4 ${reviewMode === 'feedback' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold rounded-2xl transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-2 active:scale-95`}
+                    disabled={
+                      isSubmitting || 
+                      (reviewMode === 'feedback' && !reviewForm.feedback.trim()) ||
+                      (reviewMode === 'full' && reviewForm.status === 'Rejected' && !reviewForm.feedback.trim())
+                    }
+                    className={`flex-1 py-4 ${reviewMode === 'feedback' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold rounded-2xl transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     {isSubmitting ? <Clock className="animate-spin" size={20} /> : <Send size={20} />}
-                    {reviewMode === 'feedback' ? 'Post Feedback' : 'Submit Review'}
+                    {reviewMode === 'feedback' ? 'Post Feedback' : reviewForm.status === 'Rejected' ? 'Confirm Rejection' : 'Submit Review & Approve'}
                   </button>
                 </div>
               </form>

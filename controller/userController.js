@@ -127,11 +127,10 @@ export const createUser = async (req, res) => {
       }
 
       // Send greeting email with temp credentials
-      try {
-        const portalUrl = getPortalBaseUrl(req, req.body.origin);
-        const loginUrl = `${portalUrl}/login`;
-        
-        const htmlContent = `<!DOCTYPE html>
+      const portalUrl = getPortalBaseUrl(req, req.body.origin);
+      const loginUrl = `${portalUrl}/login`;
+      
+      const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -321,28 +320,41 @@ export const createUser = async (req, res) => {
 </body>
 </html>`;
 
-        await sendEmail({
-          email: user.email,
-          subject: "Welcome to SmartFYP Academic Portal",
-          message: `Dear ${user.name},\n\nYour account has been created on the SmartFYP Portal. Here are your credentials:\n\nEmail: ${user.email}\nTemporary Password: ${temporaryPassword}\nRole: ${user.role}\n\nPlease reset your password on your first login and select the role "${user.role}" when logging in.\n\nBest Regards,\nSmartFYP Team`,
-          html: htmlContent
-        });
-      } catch (err) {
-        console.log("Welcome Email could not be sent (transporter settings missing). Temporary password for " + user.email + " is: " + temporaryPassword);
-      }
+        let emailSent = false;
+        let emailError = null;
+        try {
+          await sendEmail({
+            email: user.email,
+            subject: "Welcome to SmartFYP Academic Portal",
+            message: `Dear ${user.name},\n\nYour account has been created on the SmartFYP Portal.\n\nCredentials:\nPortal Link: ${loginUrl}\nEmail: ${user.email}\nTemporary Password: ${temporaryPassword}\nRole: ${user.role}\n\nPlease reset your password upon your first login.\n\nBest Regards,\nSmartFYP Team`,
+            html: htmlContent
+          });
+          emailSent = true;
+          console.log(`[CreateUser] Welcome email successfully dispatched to ${user.email}`);
+        } catch (err) {
+          emailError = err.message;
+          console.warn(`[CreateUser] Welcome email could not be sent to ${user.email}:`, err.message);
+        }
 
-      res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        isFirstLogin: user.isFirstLogin,
-        tempPasswordUsed: temporaryPassword
-      });
-    } else {
-      res.status(400).json({ message: "Invalid user data" });
-    }
+        res.status(201).json({
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          department: user.department,
+          isFirstLogin: user.isFirstLogin,
+          tempPasswordUsed: temporaryPassword,
+          temporaryPassword,
+          emailSent,
+          emailError,
+          portalUrl: loginUrl,
+          message: emailSent
+            ? `User ${user.name} created! Welcome email dispatched to ${user.email}.`
+            : `User ${user.name} created! Temporary Password: ${temporaryPassword}`
+        });
+      } else {
+        res.status(400).json({ message: "Invalid user data" });
+      }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -511,15 +523,23 @@ export const resetUserPassword = async (req, res) => {
           </div>
         `
       });
+      emailSent = true;
+      console.log(`[ResetUserPassword] Notification email dispatched successfully to ${user.email}`);
     } catch (mailErr) {
-      console.log("Could not send password reset notification email:", mailErr.message);
+      emailError = mailErr.message;
+      console.warn(`[ResetUserPassword] Could not send notification email to ${user.email}:`, mailErr.message);
     }
 
     res.json({
-      message: `Password for ${user.name} reset successfully!`,
+      message: emailSent 
+        ? `Password for ${user.name} reset successfully! Notification email sent to ${user.email}.`
+        : `Password for ${user.name} reset successfully! Temporary Password: ${newPassword}`,
       email: user.email,
       temporaryPassword: newPassword,
-      isFirstLogin: user.isFirstLogin
+      isFirstLogin: user.isFirstLogin,
+      emailSent,
+      emailError,
+      portalUrl: loginUrl
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

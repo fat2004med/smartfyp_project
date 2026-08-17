@@ -3,10 +3,15 @@ import User from "../models/User.js";
 
 export const protect = async (req, res, next) => {
   let token;
+  const authHeader = req.headers.authorization || req.headers.Authorization;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+  if (authHeader && authHeader.toLowerCase().startsWith("bearer")) {
     try {
-      token = req.headers.authorization.split(" ")[1];
+      token = authHeader.split(" ")[1];
+      if (!token || token === "null" || token === "undefined") {
+        return res.status(401).json({ message: "Not authorized, no token" });
+      }
+
       const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback_secret");
       
       // Get user from database to include role and other data
@@ -42,9 +47,7 @@ export const protect = async (req, res, next) => {
     }
   }
 
-  if (!token) {
-    return res.status(401).json({ message: "Not authorized, no token" });
-  }
+  return res.status(401).json({ message: "Not authorized, no token" });
 };
 
 export const authorize = (...roles) => {

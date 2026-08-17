@@ -5,9 +5,9 @@ import { protect, authorize } from "../middleware/auth.js";
 const router = express.Router();
 
 router.get("/admin", protect, authorize("Admin"), getAdminStats);
-router.get("/hod", protect, authorize("HOD"), getHODStats);
-router.get("/supervisor", protect, authorize("Supervisor"), getSupervisorStats);
-router.get("/team", protect, authorize("Team Leader", "Team Member"), getTeamStats);
+router.get("/hod", protect, authorize("HOD", "Admin"), getHODStats);
+router.get("/supervisor", protect, authorize("Supervisor", "HOD", "Admin"), getSupervisorStats);
+router.get("/team", protect, authorize("Team Leader", "Team Member", "Admin", "HOD", "Supervisor"), getTeamStats);
 router.get("/logs", protect, authorize("Admin"), getSystemLogs);
 router.delete("/logs", protect, authorize("Admin"), clearSystemLogs);
 

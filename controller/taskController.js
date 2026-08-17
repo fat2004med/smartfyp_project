@@ -154,8 +154,10 @@ export const getMyTasks = async (req, res) => {
 
 export const getProjectTasks = async (req, res) => {
   try {
-    const project = await Project.findOne({ members: req.user._id });
-    if (!project) return res.status(404).json({ message: "No project found" });
+    const project = await Project.findOne({ 
+      $or: [{ members: req.user._id }, { teamLeader: req.user._id }] 
+    });
+    if (!project) return res.json([]);
     
     const query = { project: project._id };
     

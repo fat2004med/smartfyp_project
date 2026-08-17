@@ -311,7 +311,7 @@ export const getMyProject = async (req, res) => {
     if (project) {
       res.json(project);
     } else {
-      res.status(404).json({ message: "No project found for your team" });
+      res.json(null);
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -320,12 +320,14 @@ export const getMyProject = async (req, res) => {
 
 export const getTeamProject = async (req, res) => {
   try {
-    const project = await Project.findOne({ members: req.user._id })
+    const project = await Project.findOne({ 
+      $or: [{ members: req.user._id }, { teamLeader: req.user._id }] 
+    })
       .populate("members", "name email role profilePicture phone");
     if (project) {
       res.json(project);
     } else {
-      res.status(404).json({ message: "Project not found" });
+      res.json(null);
     }
   } catch (error) {
     res.status(500).json({ message: error.message });

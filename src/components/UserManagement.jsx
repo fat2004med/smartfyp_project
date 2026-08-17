@@ -164,12 +164,17 @@ const UserManagement = () => {
         const { data } = await api.put(`/api/users/${editingUser._id}`, payload);
         setUsers(users.map(u => u._id === editingUser._id ? data : u));
         setEditingUser(null);
+        toast.success('User updated successfully!');
       } else {
         const { data } = await api.post('/api/users', payload);
         setUsers([...users, data]);
+        if (data.emailSent) {
+          toast.success(`User created! Welcome email dispatched to ${data.email}`);
+        } else {
+          toast.success(data.message || 'User created successfully!');
+        }
       }
       setIsModalOpen(false);
-      toast.success(editingUser ? 'User updated successfully!' : 'User created successfully!');
       setNewUser({ name: '', email: '', role: '', department: '', studentRegNo: '', designation: '', phone: '' });
       fetchUsers();
     } catch (error) {

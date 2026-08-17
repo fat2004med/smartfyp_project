@@ -19,7 +19,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { Toaster, toast } from 'react-hot-toast';
 import { useEffect } from 'react';
-import ApiDebugger from './components/ApiDebugger';
+
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -156,7 +156,6 @@ export default function App() {
         <Toaster position="top-right" reverseOrder={false} />
         <Router>
           <AppContent />
-          <ApiDebugger />
         </Router>
       </NotificationProvider>
     </AuthProvider>

@@ -18,9 +18,7 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || mode || 'production'),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
-      'process.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL || ''),
       'global': 'globalThis',
-      'window': 'window',
     },
     resolve: {
       alias: {
@@ -30,7 +28,7 @@ export default defineConfig(({ mode }) => {
       dedupe: ['react', 'react-dom', 'react-is'],
     },
     optimizeDeps: {
-      include: ['recharts', 'react-is', 'react', 'react-dom', 'axios'],
+      include: ['recharts', 'react-is'],
     },
     build: {
       outDir: 'dist',
@@ -45,16 +43,29 @@ export default defineConfig(({ mode }) => {
       },
       rollupOptions: {
         output: {
-          manualChunks: (id) => {
+          manualChunks(id) {
             if (id.includes('node_modules')) {
+              if (
+                id.includes('react') ||
+                id.includes('react-dom') ||
+                id.includes('react-router-dom') ||
+                id.includes('react-is')
+              ) {
+                return 'vendor-react';
+              }
+              if (id.includes('lucide-react') || id.includes('motion')) {
+                return 'vendor-ui';
+              }
+              if (id.includes('recharts') || id.includes('d3')) {
+                return 'vendor-charts';
+              }
               return 'vendor';
             }
           },
         },
         onwarn(warning, warn) {
-          if (warning.code === 'MODULE_LEVEL_DIRECTIVE' || 
-              warning.code === 'EVAL' ||
-              warning.code === 'CIRCULAR_DEPENDENCY') {
+          // Suppress non-critical warnings that could abort strict CI/CD builds
+          if (warning.code === 'MODULE_LEVEL_DIRECTIVE' || warning.code === 'EVAL') {
             return;
           }
           warn(warning);
@@ -63,13 +74,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
-      proxy: {
-        '/api': {
-          target: 'http://localhost:3000',
-          changeOrigin: true,
-          secure: false,
-        }
-      }
     },
   };
 });
+

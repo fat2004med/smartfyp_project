@@ -19,6 +19,7 @@ router.get("/published", getPublishedAssignments);
 router.get("/assigned", getAssignedToMeAssignments);
 router.post("/", authorize("Admin", "HOD", "Supervisor", "Team Leader"), upload.single("template"), createAssignment);
 router.post("/:id/submit", upload.single("attachment"), submitAssignment);
+router.post("/feedback", authorize("Admin", "HOD", "Supervisor", "Team Leader"), provideFeedback);
 router.post("/:id/feedback", authorize("Admin", "HOD", "Supervisor", "Team Leader"), provideFeedback);
 
 export default router;

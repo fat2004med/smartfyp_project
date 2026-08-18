@@ -12,13 +12,15 @@ import {
   Clock, 
   X, 
   Search, 
-  Link as LinkIcon,
-  ChevronRight,
-  History,
-  Send,
-  ThumbsUp,
-  ThumbsDown,
-  MessageSquare
+  Link as LinkIcon, 
+  ChevronRight, 
+  History, 
+  Send, 
+  ThumbsUp, 
+  ThumbsDown, 
+  MessageSquare,
+  XCircle,
+  Edit3
 } from 'lucide-react';
 
 const Assignments = () => {
@@ -69,6 +71,11 @@ const Assignments = () => {
       setLoading(true);
       const { data } = await axios.get('/api/assignments');
       setAssignments(data);
+      setSelectedAssignment(prev => {
+        if (!prev) return null;
+        const found = data.find(a => a._id === prev._id);
+        return found || prev;
+      });
     } catch (error) {
       console.error('Error fetching assignments:', error);
     } finally {
@@ -100,26 +107,30 @@ const Assignments = () => {
   }, [fetchAssignments, checkTeamAllocation]);
 
   const filteredAssignments = useMemo(() => {
-    let list;
+    let list = [];
+    const currentUserId = (user?._id || user)?.toString();
     
     if (activeTab === 'Assigned to Me') {
       list = assignments.filter(a => {
-        const matchesTarget = (a.targetRoles && a.targetRoles.includes(activeRole)) || 
-                              a.targetRole === activeRole || 
-                              (a.assignedTo && a.assignedTo.some(id => (id._id || id).toString() === user?._id?.toString()));
-        if (!matchesTarget) return false;
-
         const creatorId = (a.createdBy?._id || a.createdBy || a.creator?._id || a.creator)?.toString();
         const cRole = a.createdAsRole || a.publisherRole || a.creatorRole;
-        if (creatorId === user?._id?.toString() && cRole === activeRole) {
+        
+        // If created by this user in this same role capacity, don't show under "Assigned to Me" (belongs in "Creation History")
+        if (creatorId === currentUserId && cRole === activeRole) {
           return false;
         }
-        return true;
+
+        const matchesTarget = (a.targetRoles && a.targetRoles.includes(activeRole)) || 
+                              a.targetRole === activeRole || 
+                              (a.assignedTo && a.assignedTo.some(id => (id?._id || id)?.toString() === currentUserId));
+        return matchesTarget;
       });
     } else {
+      // "Creation History" / "Created by Me"
       list = assignments.filter(a => {
         const creatorId = (a.createdBy?._id || a.createdBy || a.creator?._id || a.creator)?.toString();
-        if (creatorId !== user?._id?.toString()) return false;
+        // ONLY show assignments created by this user
+        if (creatorId !== currentUserId) return false;
 
         const cRole = a.createdAsRole || a.publisherRole || a.creatorRole;
         if (cRole) {
@@ -130,27 +141,61 @@ const Assignments = () => {
     }
 
     return list.filter(a => 
-      a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.creator?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+      a.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.creator?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [assignments, activeTab, activeRole, user?._id, searchQuery]);
+  }, [assignments, activeTab, activeRole, user, searchQuery]);
 
   const handleReviewSubmission = async (e) => {
     if (e) e.preventDefault();
+    if (!reviewData.assignmentId) {
+      toast.error('Assignment not selected');
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await axios.post(`/api/assignments/${reviewData.assignmentId}/feedback`, {
+      const response = await axios.post(`/api/assignments/${reviewData.assignmentId}/feedback`, {
+        assignmentId: reviewData.assignmentId,
+        submissionId: reviewData.submissionId,
         studentId: reviewData.studentId,
         feedback: reviewData.feedback,
         grade: reviewData.grade,
         status: reviewData.status
       });
-      toast.success(`Submission ${reviewData.status.toLowerCase()}ed successfully`);
+
+      const updatedAssignment = response.data?.assignment;
+      toast.success(response.data?.message || `Submission ${reviewData.status.toLowerCase()}ed successfully`);
       setIsReviewModalOpen(false);
-      fetchAssignments();
-      setSelectedAssignment(null);
+
+      // Refresh assignments
+      await fetchAssignments();
+
+      // Update selectedAssignment in details view if open
+      if (updatedAssignment) {
+        setSelectedAssignment(updatedAssignment);
+      } else {
+        setSelectedAssignment(prev => {
+          if (!prev || prev._id !== reviewData.assignmentId) return prev;
+          const updatedSubs = (prev.submissions || []).map(s => {
+            const isMatch = (reviewData.submissionId && s._id?.toString() === reviewData.submissionId?.toString()) ||
+                            (reviewData.studentId && (s.student?._id || s.student)?.toString() === reviewData.studentId?.toString());
+            if (isMatch) {
+              return {
+                ...s,
+                feedback: reviewData.feedback,
+                grade: reviewData.grade,
+                status: reviewData.status
+              };
+            }
+            return s;
+          });
+          return { ...prev, submissions: updatedSubs };
+        });
+      }
     } catch (error) {
       console.error('Error reviewing assignment:', error);
+      toast.error(error.response?.data?.message || 'Failed to submit review');
     } finally {
       setIsSubmitting(false);
     }
@@ -223,9 +268,38 @@ const Assignments = () => {
     return assignment.submissions?.find(s => s.student?._id === user?._id || s.student === user?._id);
   };
 
+  const getAssignmentReviewStatus = (assignment) => {
+    const submissions = assignment.submissions || [];
+    if (submissions.length === 0) {
+      return {
+        hasSubmissions: false,
+        isAllReviewed: false,
+        pendingCount: 0,
+        reviewedCount: 0,
+        totalCount: 0
+      };
+    }
+    const pending = submissions.filter(s => s.status !== 'Approved' && s.status !== 'Rejected');
+    const reviewed = submissions.filter(s => s.status === 'Approved' || s.status === 'Rejected');
+    return {
+      hasSubmissions: true,
+      isAllReviewed: pending.length === 0,
+      pendingCount: pending.length,
+      reviewedCount: reviewed.length,
+      totalCount: submissions.length
+    };
+  };
+
   const getStatusStyle = (assignment) => {
     if (activeTab === 'Creation History') {
-      return (assignment.submissions?.length > 0) ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500';
+      const reviewStatus = getAssignmentReviewStatus(assignment);
+      if (!reviewStatus.hasSubmissions) {
+        return 'bg-gray-100 text-gray-500';
+      }
+      if (reviewStatus.isAllReviewed) {
+        return 'bg-green-100 text-green-700 font-bold';
+      }
+      return 'bg-amber-100 text-amber-700 font-bold';
     }
     const submission = getUserSubmission(assignment);
     if (submission) {
@@ -242,8 +316,14 @@ const Assignments = () => {
 
   const getStatusLabel = (assignment) => {
     if (activeTab === 'Creation History') {
-       const count = assignment.submissions?.length || 0;
-       return `${count} Submission${count !== 1 ? 's' : ''}`;
+      const reviewStatus = getAssignmentReviewStatus(assignment);
+      if (!reviewStatus.hasSubmissions) {
+        return '0 Submissions';
+      }
+      if (reviewStatus.isAllReviewed) {
+        return `All Reviewed (${reviewStatus.reviewedCount}/${reviewStatus.totalCount})`;
+      }
+      return `${reviewStatus.pendingCount} Pending Review`;
     }
     const submission = getUserSubmission(assignment);
     if (submission) {
@@ -297,23 +377,21 @@ const Assignments = () => {
       {/* Tabs & Search */}
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
         <div className="bg-gray-100/50 p-1 rounded-2xl flex gap-1 w-full lg:w-auto">
-          {activeRole !== 'Admin' && (
-            <button
-              onClick={() => setActiveTab('Assigned to Me')}
-              className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
-                activeTab === 'Assigned to Me' 
-                  ? 'bg-white text-blue-600 shadow-sm' 
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <FileText size={18} />
-              Assigned to Me
-            </button>
-          )}
+          <button
+            onClick={() => setActiveTab('Assigned to Me')}
+            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'Assigned to Me' 
+                ? 'bg-white text-blue-600 shadow-sm' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <FileText size={18} />
+            Assigned to Me
+          </button>
           {activeRole !== 'Team Member' && (
             <button
               onClick={() => setActiveTab('Creation History')}
-              className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+              className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'Creation History' 
                   ? 'bg-white text-blue-600 shadow-sm' 
                   : 'text-gray-500 hover:text-gray-700'
@@ -443,23 +521,71 @@ const Assignments = () => {
                           )}
                         </>
                       )}
-                      {activeTab === 'Creation History' && assignment.submissions?.length > 0 && (
-                        <div className="flex -space-x-2 mr-2">
-                           {assignment.submissions.slice(0, 3).map((s, i) => (
-                             <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-blue-100 flex items-center justify-center text-[8px] font-bold text-blue-600" title={s.student?.name}>
-                               {s.student?.name?.charAt(0) || 'S'}
-                             </div>
-                           ))}
-                           {assignment.submissions.length > 3 && (
-                             <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[8px] font-bold text-gray-400">
-                               +{assignment.submissions.length - 3}
-                             </div>
-                           )}
-                        </div>
+                      {activeTab === 'Creation History' && (
+                        <>
+                          {assignment.submissions?.length > 0 && (
+                            <div className="flex -space-x-2 mr-2">
+                               {assignment.submissions.slice(0, 3).map((s, i) => (
+                                 <div 
+                                   key={i} 
+                                   className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[8px] font-bold ${
+                                     s.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                                     s.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-600'
+                                   }`} 
+                                   title={`${s.student?.name || 'Student'} • ${s.status || 'Submitted'}`}
+                                 >
+                                   {s.student?.name?.charAt(0) || 'S'}
+                                 </div>
+                               ))}
+                               {assignment.submissions.length > 3 && (
+                                 <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[8px] font-bold text-gray-400">
+                                   +{assignment.submissions.length - 3}
+                                 </div>
+                               )}
+                            </div>
+                          )}
+
+                          {(() => {
+                            const reviewStatus = getAssignmentReviewStatus(assignment);
+                            if (reviewStatus.hasSubmissions && reviewStatus.isAllReviewed) {
+                              return (
+                                <button 
+                                  onClick={() => setSelectedAssignment(assignment)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-xs font-bold border border-green-200 transition-all cursor-pointer shadow-sm active:scale-95"
+                                  title="All submissions reviewed. Click to view or edit review"
+                                >
+                                  <CheckCircle2 size={13} className="text-green-600" />
+                                  <span>Reviewed</span>
+                                </button>
+                              );
+                            } else if (reviewStatus.hasSubmissions && !reviewStatus.isAllReviewed) {
+                              return (
+                                <button 
+                                  onClick={() => setSelectedAssignment(assignment)}
+                                  className="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg font-bold text-xs hover:bg-blue-700 transition-all shadow-md shadow-blue-100 flex items-center gap-1.5 cursor-pointer active:scale-95"
+                                  title={`${reviewStatus.pendingCount} submission(s) awaiting review`}
+                                >
+                                  <CheckCircle2 size={13} />
+                                  <span>Review {reviewStatus.pendingCount > 1 ? `(${reviewStatus.pendingCount})` : ''}</span>
+                                </button>
+                              );
+                            } else {
+                              return (
+                                <button 
+                                  onClick={() => setSelectedAssignment(assignment)}
+                                  className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-bold border border-gray-200 transition-all cursor-pointer flex items-center gap-1"
+                                >
+                                  <span>View</span>
+                                </button>
+                              );
+                            }
+                          })()}
+                        </>
                       )}
                       <button 
                         onClick={() => setSelectedAssignment(assignment)}
-                        className="p-2 hover:bg-gray-100 text-gray-400 rounded-lg transition-colors"
+                        className="p-2 hover:bg-gray-100 text-gray-400 rounded-lg transition-colors cursor-pointer"
+                        title="View Details"
                       >
                         <ChevronRight size={18} />
                       </button>
@@ -884,22 +1010,26 @@ const Assignments = () => {
                                     </a>
                                   )}
                                </div>
-                               <button 
-                                 onClick={() => {
-                                   setSelectedAssignment(selectedAssignment);
-                                   setReviewData({
-                                     assignmentId: selectedAssignment._id,
-                                     studentId: sub.student?._id || sub.student,
-                                     feedback: sub.feedback || '',
-                                     grade: sub.grade || '',
-                                     status: sub.status === 'Submitted' ? 'Approved' : sub.status
-                                   });
-                                   setIsReviewModalOpen(true);
-                                 }}
-                                 className="text-[10px] font-bold text-blue-600 hover:underline"
-                               >
-                                 Review & Grade
-                               </button>
+                               {sub.status !== 'Approved' && sub.status !== 'Rejected' && (
+                                 <button 
+                                   onClick={() => {
+                                     setSelectedAssignment(selectedAssignment);
+                                     setReviewData({
+                                       assignmentId: selectedAssignment._id,
+                                       submissionId: sub._id,
+                                       studentId: sub.student?._id || sub.student,
+                                       feedback: sub.feedback || '',
+                                       grade: sub.grade || '',
+                                       status: 'Approved'
+                                     });
+                                     setIsReviewModalOpen(true);
+                                   }}
+                                   className="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg font-bold text-xs hover:bg-blue-700 transition-all shadow-md shadow-blue-100 flex items-center gap-1.5 cursor-pointer active:scale-95"
+                                 >
+                                   <CheckCircle2 size={13} />
+                                   <span>Review & Grade</span>
+                                 </button>
+                               )}
                             </div>
                             
                             {sub.feedback && (
@@ -968,8 +1098,8 @@ const Assignments = () => {
                       {reviewData.status === 'Approved' ? <ThumbsUp size={20} /> : <ThumbsDown size={20} />}
                    </div>
                    <div>
-                      <h2 className="text-xl font-bold text-gray-900">Review Submission</h2>
-                      <p className="text-xs text-gray-500">Provide feedback and status</p>
+                      <h2 className="text-xl font-bold text-gray-900">Review & Grade Submission</h2>
+                      <p className="text-xs text-gray-500">Provide feedback, grade, and set status to Approved or Rejected</p>
                    </div>
                 </div>
                 <button onClick={() => setIsReviewModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400">
@@ -1031,22 +1161,27 @@ const Assignments = () => {
 
                 <div className="flex gap-3 pt-2">
                    <button 
+                     type="button"
                      onClick={() => setIsReviewModalOpen(false)}
-                     className="flex-1 py-3 border border-gray-100 text-gray-500 font-bold rounded-2xl hover:bg-gray-50 transition-all text-sm"
+                     className="flex-1 py-3 border border-gray-200 text-gray-600 font-bold rounded-2xl hover:bg-gray-50 transition-all text-sm cursor-pointer"
                    >
                      Cancel
                    </button>
                    <button 
+                     type="button"
                      onClick={handleReviewSubmission}
                      disabled={isSubmitting}
-                     className={`flex-1 py-3 text-white font-bold rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm ${
-                        reviewData.status === 'Approved' ? 'bg-green-600 shadow-green-100' : 'bg-red-600 shadow-red-100'
+                     className={`flex-1 py-3 text-white font-bold rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                        reviewData.status === 'Approved' ? 'bg-green-600 hover:bg-green-700 shadow-green-100' : 'bg-red-600 hover:bg-red-700 shadow-red-100'
                      }`}
                    >
                      {isSubmitting ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Saving Review...</span>
+                        </>
                      ) : (
-                        reviewData.status === 'Approved' ? 'Approve Work' : 'Reject Work'
+                        reviewData.status === 'Approved' ? 'Save & Approve' : 'Save & Reject'
                      )}
                    </button>
                 </div>

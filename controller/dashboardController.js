@@ -140,10 +140,17 @@ export const getAdminStats = async (req, res) => {
     }));
 
     // Dynamic Recent Assignments
-    const dbRecentAssignments = await Assignment.find()
+    const dbRecentAssignments = await Assignment.find({
+      $or: [
+        { creator: req.user._id },
+        { createdBy: req.user._id },
+        { targetRoles: 'Admin' },
+        { targetRole: 'Admin' }
+      ]
+    })
       .populate('creator', 'name role')
       .sort({ createdAt: -1 })
-      .limit(3);
+      .limit(4);
 
     const recentAssignments = dbRecentAssignments.map(assign => ({
       id: assign._id,
@@ -359,9 +366,15 @@ export const getHODStats = async (req, res) => {
       })
     );
 
-    // Fetch up to 5 recent assignments created in this department
-    const deptUserIds = await User.find({ department: deptId }).distinct("_id");
-    const recentAssignmentsList = await Assignment.find({ creator: { $in: deptUserIds } })
+    // Fetch up to 5 recent assignments created by this HOD or targeted to HOD
+    const recentAssignmentsList = await Assignment.find({
+      $or: [
+        { creator: req.user._id },
+        { createdBy: req.user._id },
+        { targetRoles: 'HOD' },
+        { targetRole: 'HOD' }
+      ]
+    })
       .sort({ createdAt: -1 })
       .limit(5);
 

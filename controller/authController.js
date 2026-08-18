@@ -135,12 +135,16 @@ export const forgotPassword = async (req, res) => {
     let emailSent = false;
     let emailErrorMessage = null;
     try {
-      await sendEmail({
+      const emailPromise = sendEmail({
         email: user.email,
         subject,
         message: plainTextMessage,
         html: htmlMessage
       });
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Email sending timed out")), 5000)
+      );
+      await Promise.race([emailPromise, timeoutPromise]);
       emailSent = true;
       console.log(`[ForgotPassword] Password reset email delivered successfully to ${user.email}`);
     } catch (emailErr) {

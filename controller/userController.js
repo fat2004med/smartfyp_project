@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import Department from "../models/Department.js";
 import Project from "../models/Project.js";
 import sendEmail from "../utils/sendEmail.js";
+import { logEvent } from "../utils/logger.js";
 import { validatePassword, generateCompliantPassword } from "../utils/passwordValidator.js";
 import { getPortalBaseUrl } from "../utils/portalUrl.js";
 
@@ -129,6 +130,16 @@ export const createUser = async (req, res) => {
       // Send greeting email with temp credentials
       const portalUrl = getPortalBaseUrl(req, req.body.origin);
       const loginUrl = `${portalUrl}/login`;
+      let emailSent = false;
+      let emailError = null;
+
+      await logEvent({
+        level: "Info",
+        event: "User Created",
+        user: req.user?.email || "Admin",
+        details: `Created user ${user.name} (${user.email}) with role ${user.role}`,
+        ip: req.ip
+      });
       
       const htmlContent = `<!DOCTYPE html>
 <html>
@@ -320,8 +331,6 @@ export const createUser = async (req, res) => {
 </body>
 </html>`;
 
-        let emailSent = false;
-        let emailError = null;
         try {
           await sendEmail({
             email: user.email,
@@ -486,18 +495,21 @@ export const resetUserPassword = async (req, res) => {
     await user.save();
 
     // Log the event
-    await logSystemEvent(
-      "Direct Password Reset",
-      `Password reset directly by ${req.user.name} (${req.user.role}) for user ${user.email}. RequireChangeOnLogin: ${requirePasswordChange}`,
-      req.user.email,
-      "Info",
-      req.ip
-    );
+    await logEvent({
+      level: "Info",
+      event: "Direct Password Reset",
+      user: req.user?.email || "Admin",
+      details: `Password reset directly by ${req.user?.name || 'User'} (${req.user?.role || 'Admin'}) for user ${user.email}. RequireChangeOnLogin: ${requirePasswordChange}`,
+      ip: req.ip
+    });
+
+    const portalUrl = getPortalBaseUrl(req, req.body.origin);
+    const loginUrl = `${portalUrl}/login`;
+    let emailSent = false;
+    let emailError = null;
 
     // Try to notify the user via email with their new credentials
     try {
-      const portalUrl = getPortalBaseUrl(req, req.body.origin);
-      const loginUrl = `${portalUrl}/login`;
       await sendEmail({
         email: user.email,
         subject: "SmartFYP Account Password Reset",

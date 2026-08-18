@@ -297,7 +297,7 @@ const SupervisorManagement = () => {
       {/* Add Supervisor Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex justify-center items-start sm:items-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-[100] flex justify-center items-center p-3 sm:p-6 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -306,16 +306,16 @@ const SupervisorManagement = () => {
               className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden my-auto"
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[90vh] flex flex-col border border-gray-100"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">{editingSup ? 'Edit Supervisor' : 'Add New Supervisor'}</h2>
+              <div className="p-5 sm:p-6 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">{editingSup ? 'Edit Supervisor' : 'Add New Supervisor'}</h2>
                 <button 
                   onClick={resetForm}
-                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"
+                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 cursor-pointer"
                 >
                   <X size={20} />
                 </button>
@@ -333,80 +333,82 @@ const SupervisorManagement = () => {
                 } else {
                   handleAddSupervisor(e);
                 }
-              }} className="p-6 space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">Full Name</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input 
-                      type="text"
-                      required
-                      placeholder="Enter full name"
-                      value={newSupervisor.name}
-                      onChange={(e) => setNewSupervisor({...newSupervisor, name: e.target.value})}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    />
+              }} className="flex flex-col flex-1 overflow-hidden">
+                <div className="overflow-y-auto p-5 sm:p-6 space-y-4 flex-1 scrollbar-thin">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Full Name *</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                      <input 
+                        type="text"
+                        required
+                        placeholder="Enter full name"
+                        value={newSupervisor.name}
+                        onChange={(e) => setNewSupervisor({...newSupervisor, name: e.target.value})}
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Email Address *</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                      <input 
+                        type="email"
+                        required
+                        placeholder="Enter email address"
+                        value={newSupervisor.email}
+                        onChange={(e) => setNewSupervisor({...newSupervisor, email: e.target.value})}
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Specialization / Interests *</label>
+                    <div className="relative">
+                      <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                      <input 
+                        type="text"
+                        required
+                        placeholder="e.g. Machine Learning, Cloud Computing"
+                        value={newSupervisor.interests}
+                        onChange={(e) => setNewSupervisor({...newSupervisor, interests: e.target.value})}
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Department *</label>
+                    <div className="relative">
+                      <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                      <select 
+                        required
+                        value={newSupervisor.department}
+                        onChange={(e) => setNewSupervisor({...newSupervisor, department: e.target.value})}
+                        disabled={currentUser?.role !== 'Admin'}
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none disabled:bg-gray-100 disabled:opacity-75 disabled:cursor-not-allowed text-sm font-medium cursor-pointer"
+                      >
+                        <option value="">Select Department</option>
+                        {departments.map(dept => <option key={dept._id} value={dept._id}>{dept.name}</option>)}
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input 
-                      type="email"
-                      required
-                      placeholder="Enter email address"
-                      value={newSupervisor.email}
-                      onChange={(e) => setNewSupervisor({...newSupervisor, email: e.target.value})}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">Specialization / Interests</label>
-                  <div className="relative">
-                    <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input 
-                      type="text"
-                      required
-                      placeholder="Enter interests"
-                      value={newSupervisor.interests}
-                      onChange={(e) => setNewSupervisor({...newSupervisor, interests: e.target.value})}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">Department</label>
-                  <div className="relative">
-                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <select 
-                      required
-                      value={newSupervisor.department}
-                      onChange={(e) => setNewSupervisor({...newSupervisor, department: e.target.value})}
-                      disabled={currentUser?.role !== 'Admin'}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none disabled:bg-gray-100 disabled:opacity-75 disabled:cursor-not-allowed"
-                    >
-                      <option value="">Select Department</option>
-                      {departments.map(dept => <option key={dept._id} value={dept._id}>{dept.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <div className="p-4 sm:p-5 border-t border-gray-100 bg-gray-50/80 flex flex-col-reverse sm:flex-row gap-3 justify-end shrink-0">
                   <button 
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="w-full sm:flex-1 px-6 py-3 border border-gray-200 text-gray-500 font-bold rounded-xl hover:bg-gray-50 transition-all"
+                    className="w-full sm:w-auto px-5 py-2.5 border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-100 transition-all text-sm cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit"
-                    className="w-full sm:flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                    className="w-full sm:w-auto bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 text-sm cursor-pointer"
                   >
                     {editingSup ? 'Update Supervisor' : 'Add Supervisor'}
                   </button>

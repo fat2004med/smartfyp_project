@@ -496,7 +496,7 @@ const UserManagement = () => {
       {/* Add User Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex justify-center items-start sm:items-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-[100] flex justify-center items-center p-3 sm:p-6 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -505,152 +505,176 @@ const UserManagement = () => {
               className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden my-auto"
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative bg-white w-full max-w-xl lg:max-w-2xl rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[90vh] flex flex-col border border-gray-100"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">{editingUser ? 'Edit User' : 'Add New User'}</h2>
+              {/* Modal Header */}
+              <div className="p-5 sm:p-6 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-sm">
+                    <UserPlus size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900">{editingUser ? 'Edit User' : 'Add New User'}</h2>
+                    <p className="text-xs text-gray-500 font-medium">Enter user credentials and academic role assignments</p>
+                  </div>
+                </div>
                 <button 
                   onClick={() => setIsModalOpen(false)}
-                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"
+                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 cursor-pointer"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <form onSubmit={handleAddUser} className="p-6 space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">Full Name</label>
-                  <div className="relative">
-                    <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input 
-                      type="text"
-                      required
-                      placeholder="Enter full name"
-                      value={newUser.name || ''}
-                      onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    />
-                  </div>
-                </div>
+              {/* Form Content */}
+              <form onSubmit={handleAddUser} className="flex flex-col flex-1 overflow-hidden">
+                <div className="overflow-y-auto p-5 sm:p-6 space-y-4 flex-1 scrollbar-thin">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Full Name */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Full Name *</label>
+                      <div className="relative">
+                        <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input 
+                          type="text"
+                          required
+                          placeholder="e.g. John Doe"
+                          value={newUser.name || ''}
+                          onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input 
-                      type="email"
-                      required
-                      placeholder="Enter email address"
-                      value={newUser.email || ''}
-                      onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    />
-                  </div>
-                </div>
+                    {/* Email Address */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Email Address *</label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input 
+                          type="email"
+                          required
+                          placeholder="e.g. user@university.edu"
+                          value={newUser.email || ''}
+                          onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">Phone Number</label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input 
-                      type="text"
-                      placeholder="Enter phone number"
-                      value={newUser.phone || ''}
-                      onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    />
-                  </div>
-                </div>
+                    {/* Phone Number */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Phone Number</label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input 
+                          type="text"
+                          placeholder="e.g. +92 300 1234567"
+                          value={newUser.phone || ''}
+                          onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
+                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">Role</label>
-                  <div className="relative">
-                    <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <select 
-                      required
-                      value={newUser.role || ''}
-                      onChange={(e) => setNewUser({...newUser, role: e.target.value})}
-                      className="w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
-                    >
-                      <option value="">Select role</option>
-                      {roles.map(role => <option key={role} value={role}>{role}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
-                  </div>
-                </div>
+                    {/* Role */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Role *</label>
+                      <div className="relative">
+                        <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <select 
+                          required
+                          value={newUser.role || ''}
+                          onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                          className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none text-sm font-medium cursor-pointer"
+                        >
+                          <option value="">Select system role</option>
+                          {roles.map(role => <option key={role} value={role}>{role}</option>)}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                      </div>
+                    </div>
 
-                {/* Conditional Fields Based on Role */}
-                {newUser.role === 'Team Member' || newUser.role === 'Team Leader' ? (
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-gray-700">Student Reg. No</label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                      <input 
-                        type="text"
-                        placeholder="e.g. 2021-CS-123"
-                        value={newUser.studentRegNo || ''}
-                        onChange={(e) => setNewUser({...newUser, studentRegNo: e.target.value})}
-                        className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                      />
+                    {/* Conditional Fields Based on Role */}
+                    {newUser.role === 'Team Member' || newUser.role === 'Team Leader' ? (
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Student Reg. No *</label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                          <input 
+                            type="text"
+                            required
+                            placeholder="e.g. 2021-CS-123"
+                            value={newUser.studentRegNo || ''}
+                            onChange={(e) => setNewUser({...newUser, studentRegNo: e.target.value})}
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
+                          />
+                        </div>
+                      </div>
+                    ) : newUser.role && newUser.role !== 'Admin' ? (
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Designation *</label>
+                        <div className="relative">
+                          <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                          <input 
+                            type="text"
+                            required
+                            placeholder="e.g. Associate Professor"
+                            value={newUser.designation || ''}
+                            onChange={(e) => setNewUser({...newUser, designation: e.target.value})}
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Department */}
+                    <div className={`space-y-1.5 ${newUser.role === 'Admin' ? 'sm:col-span-2' : ''}`}>
+                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Department {newUser.role === 'Admin' ? '(Optional)' : '*'}
+                      </label>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <select 
+                          required={newUser.role !== 'Admin'}
+                          value={newUser.department || ''}
+                          onChange={(e) => setNewUser({...newUser, department: e.target.value})}
+                          disabled={currentUser?.role?.includes('HOD')}
+                          className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none disabled:opacity-75 disabled:cursor-not-allowed disabled:bg-gray-100 text-sm font-medium cursor-pointer"
+                        >
+                          <option value="">{newUser.role === 'Admin' ? 'Optional - Select department' : 'Select department'}</option>
+                          {depts.map(dept => <option key={dept._id} value={dept._id}>{dept.name}</option>)}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                      </div>
                     </div>
                   </div>
-                ) : newUser.role && newUser.role !== 'Admin' ? (
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-gray-700">Designation</label>
-                    <div className="relative">
-                      <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                      <input 
-                        type="text"
-                        placeholder="e.g. Associate Professor"
-                        value={newUser.designation || ''}
-                        onChange={(e) => setNewUser({...newUser, designation: e.target.value})}
-                        className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                      />
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">Department</label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <select 
-                      required={newUser.role !== 'Admin'}
-                      value={newUser.department || ''}
-                      onChange={(e) => setNewUser({...newUser, department: e.target.value})}
-                      disabled={currentUser?.role?.includes('HOD')}
-                      className="w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none disabled:opacity-75 disabled:cursor-not-allowed disabled:bg-gray-100 font-medium"
-                    >
-                      <option value="">{newUser.role === 'Admin' ? 'Optional - Select department' : 'Select department'}</option>
-                      {depts.map(dept => <option key={dept._id} value={dept._id}>{dept.name}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
-                  </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                {/* Sticky Action Buttons */}
+                <div className="p-4 sm:p-5 border-t border-gray-100 bg-gray-50/80 flex flex-col-reverse sm:flex-row gap-3 justify-end shrink-0">
                   <button 
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="w-full sm:flex-1 px-6 py-3 border border-gray-200 text-gray-500 font-bold rounded-xl hover:bg-gray-50 transition-all"
+                    className="w-full sm:w-auto px-5 py-2.5 border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-100 transition-all text-sm cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit"
                     disabled={submittingId === 'save'}
-                    className="w-full sm:flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full sm:w-auto bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 flex items-center justify-center gap-2 text-sm disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {submittingId === 'save' ? (
                       <>
-                        <Loader2 className="animate-spin" size={20} />
-                        Processing...
+                        <Loader2 className="animate-spin" size={18} />
+                        <span>Processing...</span>
                       </>
                     ) : (
-                      editingUser ? 'Update User' : 'Add User'
+                      <span>{editingUser ? 'Update User' : 'Create User'}</span>
                     )}
                   </button>
                 </div>

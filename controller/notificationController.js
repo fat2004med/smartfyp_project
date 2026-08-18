@@ -6,10 +6,11 @@ export const getNotifications = async (req, res) => {
     const activeRole = req.activeRole || userRoles[0] || "";
     const query = { recipient: req.user._id };
     
-    if (!userRoles.includes("Admin") && activeRole) {
+    if (activeRole && activeRole !== "Admin") {
       query.$or = [
         { targetRole: activeRole },
-        { targetRole: { $regex: new RegExp(`\\b${activeRole}\\b`, 'i') } },
+        { targetRole: { $regex: new RegExp(`^${activeRole}$`, 'i') } },
+        { targetRole: "General" },
         { targetRole: { $exists: false } },
         { targetRole: null }
       ];
@@ -17,7 +18,7 @@ export const getNotifications = async (req, res) => {
 
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
-      .limit(20);
+      .limit(30);
     res.json(notifications);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -71,10 +72,11 @@ export const getUnreadCount = async (req, res) => {
     const activeRole = req.activeRole || userRoles[0] || "";
     const query = { recipient: req.user._id, isRead: false };
     
-    if (!userRoles.includes("Admin") && activeRole) {
+    if (activeRole && activeRole !== "Admin") {
       query.$or = [
         { targetRole: activeRole },
-        { targetRole: { $regex: new RegExp(`\\b${activeRole}\\b`, 'i') } },
+        { targetRole: { $regex: new RegExp(`^${activeRole}$`, 'i') } },
+        { targetRole: "General" },
         { targetRole: { $exists: false } },
         { targetRole: null }
       ];

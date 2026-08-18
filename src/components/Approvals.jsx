@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -12,82 +14,159 @@ import {
   Check, 
   X,
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  ExternalLink
 } from 'lucide-react';
 
 const Approvals = () => {
+  const { user, activeRole } = useAuth();
   const [activeTab, setActiveTab] = useState('Pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedApproval, setSelectedApproval] = useState(null);
   const [showToast, setShowToast] = useState(null);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [approvals, setApprovals] = useState([]);
 
-  const [approvals, setApprovals] = useState([
-    {
-      id: 1,
-      type: 'Project Title',
-      title: 'Smart Agriculture using IoT and Edge Computing',
-      submittedBy: 'Team Alpha',
-      leader: 'Sarah Johnson',
-      date: '2024-04-08',
-      status: 'Pending',
-      priority: 'High',
-      description: 'A system to monitor soil moisture and weather conditions to optimize irrigation using low-power IoT devices.',
-      supervisor: 'Dr. Michael Brown'
-    },
-    {
-      id: 2,
-      type: 'Team Registration',
-      title: 'Blockchain for Secure Voting',
-      submittedBy: 'Team Nexus',
-      leader: 'David Kim',
-      date: '2024-04-07',
-      status: 'Pending',
-      priority: 'Medium',
-      description: 'Decentralized voting platform ensuring transparency and immutability of election results.',
-      supervisor: 'Prof. Emily Watson'
-    },
-    {
-      id: 3,
-      type: 'Document Submission',
-      title: 'SRS - AI Health Assistant',
-      submittedBy: 'Team Vital',
-      leader: 'Lisa Wang',
-      date: '2024-04-08',
-      status: 'Pending',
-      priority: 'High',
-      description: 'Software Requirements Specification for the AI-driven health monitoring application.',
-      supervisor: 'Dr. Robert Smith'
-    },
-    {
-      id: 4,
-      type: 'Project Title',
-      title: 'Autonomous Delivery Drone',
-      submittedBy: 'SkyLink Team',
-      leader: 'Kevin Liu',
-      date: '2024-04-05',
-      status: 'Approved',
-      priority: 'Medium',
-      description: 'Development of a drone capable of navigating urban environments for small package delivery.',
-      supervisor: 'Dr. Sarah Johnson'
+  const fetchApprovals = async () => {
+    try {
+      setLoading(true);
+      const [projectsRes, submissionsRes] = await Promise.all([
+        axios.get(`/api/projects?t=${Date.now()}`),
+        axios.get(`/api/submissions?t=${Date.now()}`)
+      ]);
+
+      const projectsData = projectsRes.data || [];
+      const submissionsData = submissionsRes.data || [];
+
+      const list = [];
+
+      // Process Projects
+      projectsData.forEach(p => {
+        // For Admin in hierarchical flow, only projects approved by HOD are pending Admin action
+        if (activeRole === 'Admin' && !p.isApprovedByHOD && p.status !== 'Approved' && p.status !== 'Rejected') {
+          return;
+        }
+
+        let status = 'Pending';
+        if (p.status === 'Approved' || (p.isApprovedBySupervisor && p.isApprovedByHOD && p.isApprovedByAdmin)) {
+          status = 'Approved';
+        } else if (p.status === 'Rejected') {
+          status = 'Rejected';
+        } else {
+          status = 'Pending';
+        }
+
+        list.push({
+          id: p._id,
+          rawId: p._id,
+          category: 'project',
+          type: 'Project Proposal',
+          title: p.title,
+          submittedBy: p.teamLeader?.name || 'Student Team',
+          leader: p.teamLeader?.name || 'N/A',
+          date: p.createdAt ? new Date(p.createdAt).toISOString().split('T')[0] : 'Recent',
+          status,
+          priority: 'High',
+          description: p.description || p.abstract || 'Project Proposal submission seeking faculty endorsement.',
+          supervisor: p.supervisor?.name || 'Unassigned',
+          department: p.department?.name || 'Computer Science',
+          isApprovedBySupervisor: p.isApprovedBySupervisor,
+          isApprovedByHOD: p.isApprovedByHOD,
+          isApprovedByAdmin: p.isApprovedByAdmin
+        });
+      });
+
+      // Process Submissions
+      submissionsData.forEach(s => {
+        const isFinal = s.isFinalDocumentation === true || s.phase === 'Final';
+        const isHodApproved = s.status === 'Pending Admin' || 
+                              s.approvals?.some(a => a.role === 'HOD' && a.status === 'Approved') ||
+                              s.status === 'Approved' ||
+                              s.status === 'Rejected';
+
+        // For HOD: only final documentation
+        if (activeRole === 'HOD' && !isFinal) return;
+
+        // For Admin: ONLY final documentation submissions after approved by HOD
+        if (activeRole === 'Admin' && (!isFinal || !isHodApproved)) return;
+
+        let status = 'Pending';
+        if (s.status === 'Approved') status = 'Approved';
+        else if (s.status === 'Rejected') status = 'Rejected';
+        else status = 'Pending';
+
+        list.push({
+          id: s._id,
+          rawId: s._id,
+          category: 'submission',
+          type: s.isFinalDocumentation ? 'Final Documentation' : (s.title || 'Deliverable Submission'),
+          title: s.title,
+          submittedBy: s.submittedBy?.name || s.project?.teamLeader?.name || 'Team Member',
+          leader: s.project?.teamLeader?.name || 'N/A',
+          date: s.createdAt ? new Date(s.createdAt).toISOString().split('T')[0] : 'Recent',
+          status,
+          priority: s.isFinalDocumentation ? 'High' : 'Medium',
+          description: s.description || `Submission under ${s.project?.title || 'Academic Project'} (Phase: ${s.phase || 'Progress'})`,
+          supervisor: s.project?.supervisor?.name || 'Supervisor',
+          department: s.project?.department?.name || 'Department',
+          fileUrl: s.fileUrl,
+          grade: s.grade,
+          score: s.score
+        });
+      });
+
+      setApprovals(list);
+    } catch (err) {
+      console.error('Error fetching approval items:', err);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
-  const handleAction = (id, newStatus) => {
-    setApprovals(prev => prev.map(app => 
-      app.id === id ? { ...app, status: newStatus } : app
-    ));
-    setShowToast({ 
-      message: `Request ${newStatus.toLowerCase()} successfully!`, 
-      type: newStatus === 'Approved' ? 'success' : 'error' 
-    });
-    setSelectedApproval(null);
-    setTimeout(() => setShowToast(null), 3000);
+  useEffect(() => {
+    fetchApprovals();
+  }, [activeRole]);
+
+  const handleAction = async (item, action) => {
+    try {
+      if (item.category === 'project') {
+        if (action === 'Approved') {
+          await axios.put(`/api/projects/${item.rawId}/approve`, { feedback: feedbackText });
+        } else {
+          await axios.put(`/api/projects/${item.rawId}/reject`, { feedback: feedbackText || 'Project proposal rejected.' });
+        }
+      } else {
+        if (action === 'Approved') {
+          await axios.put(`/api/submissions/${item.rawId}/approve`, { feedback: feedbackText });
+        } else {
+          await axios.put(`/api/submissions/${item.rawId}/reject`, { feedback: feedbackText || 'Submission rejected.' });
+        }
+      }
+
+      setShowToast({ 
+        message: `${item.title} ${action.toLowerCase()} successfully!`, 
+        type: action === 'Approved' ? 'success' : 'error' 
+      });
+      setSelectedApproval(null);
+      setFeedbackText('');
+      fetchApprovals();
+      setTimeout(() => setShowToast(null), 3000);
+    } catch (err) {
+      console.error('Error performing approval action:', err);
+      setShowToast({
+        message: err.response?.data?.message || 'Failed to update status',
+        type: 'error'
+      });
+      setTimeout(() => setShowToast(null), 3000);
+    }
   };
 
   const filteredApprovals = approvals.filter(app => {
     const matchesTab = activeTab === 'All' || app.status === activeTab;
     const matchesSearch = (app.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         (app.submittedBy || '').toLowerCase().includes(searchQuery.toLowerCase());
+                         (app.submittedBy || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (app.supervisor || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
   });
 
@@ -100,11 +179,9 @@ const Approvals = () => {
   };
 
   const getTypeIcon = (type) => {
-    switch (type) {
-      case 'Team Registration': return <Users size={18} />;
-      case 'Document Submission': return <FileText size={18} />;
-      default: return <CheckCircle2 size={18} />;
-    }
+    if (type.includes('Team')) return <Users size={18} />;
+    if (type.includes('Document') || type.includes('Final')) return <FileText size={18} />;
+    return <CheckCircle2 size={18} />;
   };
 
   return (
@@ -129,15 +206,15 @@ const Approvals = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Approvals</h1>
-          <p className="text-sm text-gray-500 mt-1 font-medium">Review and manage project-related requests</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Approvals & Evaluations</h1>
+          <p className="text-sm text-gray-500 mt-1 font-medium">Review and endorse project proposals and academic documentation deliverables</p>
         </div>
         <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm w-full lg:w-auto justify-between lg:justify-start overflow-x-auto">
           {['Pending', 'Approved', 'Rejected', 'All'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex-1 lg:flex-initial whitespace-nowrap ${
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex-1 lg:flex-initial whitespace-nowrap cursor-pointer ${
                 activeTab === tab 
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-100' 
                 : 'text-gray-500 hover:bg-gray-50'
@@ -155,107 +232,116 @@ const Approvals = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
             type="text"
-            placeholder="Search by title or team name..."
+            placeholder="Search by title, team, or supervisor..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm shadow-sm font-medium"
           />
         </div>
-        <button className="flex items-center justify-center gap-2 bg-white border border-gray-200 px-4 py-3 rounded-xl text-gray-600 font-bold hover:bg-gray-50 transition-all shadow-sm w-full sm:w-auto">
+        <button 
+          onClick={fetchApprovals}
+          className="flex items-center justify-center gap-2 bg-white border border-gray-200 px-4 py-3 rounded-xl text-gray-600 font-bold hover:bg-gray-50 transition-all shadow-sm w-full sm:w-auto cursor-pointer"
+        >
           <Filter size={18} />
-          Filters
+          Refresh
         </button>
       </div>
 
       {/* Approvals List */}
-      <div className="grid grid-cols-1 gap-4">
-        {filteredApprovals.map((approval) => (
-          <motion.div
-            layout
-            key={approval.id}
-            className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 group"
-          >
-            <div className="flex items-start gap-4 flex-1">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                approval.status === 'Approved' ? 'bg-green-50 text-green-600' : 
-                approval.status === 'Rejected' ? 'bg-red-50 text-red-600' : 
-                'bg-blue-50 text-blue-600'
-              }`}>
-                {getTypeIcon(approval.type)}
+      {loading ? (
+        <div className="py-20 text-center text-gray-400 font-bold">
+          Loading approval queue...
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {filteredApprovals.map((approval) => (
+            <motion.div
+              layout
+              key={approval.id}
+              className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 group"
+            >
+              <div className="flex items-start gap-4 flex-1">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                  approval.status === 'Approved' ? 'bg-green-50 text-green-600' : 
+                  approval.status === 'Rejected' ? 'bg-red-50 text-red-600' : 
+                  'bg-blue-50 text-blue-600'
+                }`}>
+                  {getTypeIcon(approval.type)}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{approval.type}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${getPriorityColor(approval.priority)}`}>
+                      {approval.priority} Priority
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{approval.title}</h3>
+                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <span className="flex items-center gap-1 font-medium text-gray-700">
+                      <Users size={14} /> {approval.submittedBy}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock size={14} /> {approval.date}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end md:justify-start gap-3 shrink-0 w-full md:w-auto pt-4 md:pt-0 border-t border-gray-50 md:border-t-0">
+                {approval.status === 'Pending' ? (
+                  <>
+                    <button 
+                      onClick={() => handleAction(approval, 'Rejected')}
+                      className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors border border-transparent hover:border-red-100 cursor-pointer"
+                      title="Reject"
+                    >
+                      <X size={20} />
+                    </button>
+                    <button 
+                      onClick={() => handleAction(approval, 'Approved')}
+                      className="p-2.5 text-green-500 hover:bg-green-50 rounded-xl transition-colors border border-transparent hover:border-green-100 cursor-pointer"
+                      title="Approve"
+                    >
+                      <Check size={20} />
+                    </button>
+                    <button 
+                      onClick={() => setSelectedApproval(approval)}
+                      className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex-1 md:flex-initial text-center cursor-pointer"
+                    >
+                      Review
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 border border-gray-100 w-full md:w-auto justify-center md:justify-start">
+                    {approval.status === 'Approved' ? (
+                      <CheckCircle2 size={16} className="text-green-500" />
+                    ) : (
+                      <XCircle size={16} className="text-red-500" />
+                    )}
+                    <span className={`text-sm font-bold ${
+                      approval.status === 'Approved' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {approval.status}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          ))}
+
+          {filteredApprovals.length === 0 && (
+            <div className="py-20 text-center space-y-4">
+              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto text-gray-300">
+                <CheckCircle2 size={40} />
               </div>
               <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{approval.type}</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${getPriorityColor(approval.priority)}`}>
-                    {approval.priority} Priority
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{approval.title}</h3>
-                <div className="flex items-center gap-4 text-xs text-gray-500">
-                  <span className="flex items-center gap-1 font-medium text-gray-700">
-                    <Users size={14} /> {approval.submittedBy}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock size={14} /> {approval.date}
-                  </span>
-                </div>
+                <h3 className="text-lg font-bold text-gray-900">No requests found</h3>
+                <p className="text-gray-500">All caught up! No items found matching this filter.</p>
               </div>
             </div>
-
-            <div className="flex items-center justify-end md:justify-start gap-3 shrink-0 w-full md:w-auto pt-4 md:pt-0 border-t border-gray-50 md:border-t-0">
-              {approval.status === 'Pending' ? (
-                <>
-                  <button 
-                    onClick={() => handleAction(approval.id, 'Rejected')}
-                    className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors border border-transparent hover:border-red-100"
-                    title="Reject"
-                  >
-                    <X size={20} />
-                  </button>
-                  <button 
-                    onClick={() => handleAction(approval.id, 'Approved')}
-                    className="p-2.5 text-green-500 hover:bg-green-50 rounded-xl transition-colors border border-transparent hover:border-green-100"
-                    title="Approve"
-                  >
-                    <Check size={20} />
-                  </button>
-                  <button 
-                    onClick={() => setSelectedApproval(approval)}
-                    className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex-1 md:flex-initial text-center"
-                  >
-                    Review
-                  </button>
-                </>
-              ) : (
-                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 border border-gray-100 w-full md:w-auto justify-center md:justify-start">
-                  {approval.status === 'Approved' ? (
-                    <CheckCircle2 size={16} className="text-green-500" />
-                  ) : (
-                    <XCircle size={16} className="text-red-500" />
-                  )}
-                  <span className={`text-sm font-bold ${
-                    approval.status === 'Approved' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {approval.status}
-                  </span>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        ))}
-
-        {filteredApprovals.length === 0 && (
-          <div className="py-20 text-center space-y-4">
-            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto text-gray-300">
-              <CheckCircle2 size={40} />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-lg font-bold text-gray-900">No requests found</h3>
-              <p className="text-gray-500">All caught up! No pending approvals at the moment.</p>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Approval Details Modal */}
       <AnimatePresence>
@@ -286,7 +372,7 @@ const Approvals = () => {
                 </div>
                 <button 
                   onClick={() => setSelectedApproval(null)}
-                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"
+                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 cursor-pointer"
                 >
                   <X size={20} />
                 </button>
@@ -309,10 +395,8 @@ const Approvals = () => {
                       <p className="text-sm font-bold text-gray-700">{selectedApproval.supervisor}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Priority</p>
-                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${getPriorityColor(selectedApproval.priority)}`}>
-                        {selectedApproval.priority}
-                      </span>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Department</p>
+                      <p className="text-sm font-bold text-gray-700">{selectedApproval.department}</p>
                     </div>
                   </div>
                 </div>
@@ -324,10 +408,26 @@ const Approvals = () => {
                   </p>
                 </div>
 
+                {selectedApproval.fileUrl && (
+                  <div>
+                    <a 
+                      href={selectedApproval.fileUrl} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 font-bold text-xs rounded-xl hover:bg-blue-100 transition-colors"
+                    >
+                      <ExternalLink size={14} />
+                      View Submitted Document File
+                    </a>
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Review Comments (Optional)</p>
                   <textarea 
-                    placeholder="Provide feedback for the team..."
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    placeholder="Provide feedback or guidance for the team..."
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
                     rows={3}
                   />
@@ -336,14 +436,14 @@ const Approvals = () => {
 
               <div className="p-4 sm:p-6 border-t border-gray-100 bg-gray-50 flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-3 shrink-0">
                 <button 
-                  onClick={() => handleAction(selectedApproval.id, 'Rejected')}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-white border border-red-200 text-red-600 font-bold rounded-xl hover:bg-red-50 transition-all text-sm text-center"
+                  onClick={() => handleAction(selectedApproval, 'Rejected')}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-white border border-red-200 text-red-600 font-bold rounded-xl hover:bg-red-50 transition-all text-sm text-center cursor-pointer"
                 >
                   Reject Request
                 </button>
                 <button 
-                  onClick={() => handleAction(selectedApproval.id, 'Approved')}
-                  className="w-full sm:w-auto bg-blue-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 text-sm text-center"
+                  onClick={() => handleAction(selectedApproval, 'Approved')}
+                  className="w-full sm:w-auto bg-blue-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 text-sm text-center cursor-pointer"
                 >
                   Approve Request
                 </button>

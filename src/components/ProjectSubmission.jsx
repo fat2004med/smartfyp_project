@@ -8,6 +8,8 @@ import {
   Download, 
   Upload, 
   CheckCircle2, 
+  Check,
+  XCircle,
   Clock, 
   AlertCircle, 
   MessageSquare,
@@ -165,7 +167,7 @@ const ProjectSubmission = () => {
     } finally {
       setLoading(false);
     }
-  }, [user._id, activeRole]);
+  }, [activeRole]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -314,10 +316,21 @@ const ProjectSubmission = () => {
     }
   };
 
-  const canReview = (status) => {
-    if (!status || status === 'Not Submitted') return false;
-    if (activeRole === 'Admin') return ['Pending TL', 'Pending Supervisor', 'Pending HOD', 'Pending Admin', 'Pending', 'Submitted'].includes(status);
-    if (activeRole === 'HOD') return ['Pending HOD', 'Pending Supervisor', 'Pending', 'Submitted'].includes(status);
+  const canReview = (status, doc) => {
+    if (!status || status === 'Not Submitted' || status === 'Approved' || status === 'Rejected') return false;
+    
+    // Check if the current user or active role has already reviewed this document
+    const currentUserId = user?._id || user?.id;
+    const hasAlreadyReviewed = doc?.approvals?.some(a => 
+      a.role === activeRole && (a.status === 'Approved' || a.status === 'Rejected')
+    );
+    if (hasAlreadyReviewed && status !== 'Pending Admin' && activeRole !== 'Admin') return false;
+
+    if (activeRole === 'Admin') {
+      // In Admin dashboard, any unfinalized submission displayed to admin can be reviewed/evaluated
+      return true;
+    }
+    if (activeRole === 'HOD') return ['Pending HOD', 'Pending Admin'].includes(status);
     if (activeRole === 'Supervisor') return ['Pending Supervisor', 'Pending', 'Submitted'].includes(status);
     if (activeRole === 'Team Leader') return ['Pending TL', 'Pending', 'Submitted'].includes(status);
     return false;
@@ -420,12 +433,30 @@ const ProjectSubmission = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {submissions.filter(s => s.semester === sem).length === 0 ? (
+                  {submissions.filter(s => {
+                    if (s.semester !== sem) return false;
+                    if (activeRole === 'HOD') return s.isFinalDocumentation === true || s.phase === 'Final';
+                    if (activeRole === 'Admin') {
+                      const isFinal = s.isFinalDocumentation === true || s.phase === 'Final';
+                      const isHodApproved = s.status === 'Pending Admin' || 
+                                            s.approvals?.some(a => a.role === 'HOD' && a.status === 'Approved') ||
+                                            s.status === 'Approved' ||
+                                            s.status === 'Rejected';
+                      return isFinal && isHodApproved;
+                    }
+                    return true;
+                  }).length === 0 ? (
                     <tr>
                       <td colSpan={['Admin', 'HOD', 'Supervisor'].includes(activeRole) ? 7 : 6} className="px-6 py-12 text-center text-gray-400 font-medium">
                         <div className="flex flex-col items-center gap-2">
                           <FileText size={40} className="text-gray-300 stroke-[1.5] mx-auto" />
-                          <p className="text-sm font-bold text-gray-700">No submission slots defined yet for Semester {sem}</p>
+                          <p className="text-sm font-bold text-gray-700">
+                            {activeRole === 'Admin' 
+                              ? `No final documentation submissions approved by HOD for Semester ${sem}` 
+                              : activeRole === 'HOD' 
+                              ? `No final documentation submissions registered for Semester ${sem}` 
+                              : `No submission slots defined yet for Semester ${sem}`}
+                          </p>
                           {['Team Leader', 'Team Member'].includes(activeRole) && (
                             <p className="text-xs text-gray-400 font-normal">Use the &quot;Add Submission Slot&quot; button above to create a custom slot.</p>
                           )}
@@ -433,7 +464,19 @@ const ProjectSubmission = () => {
                       </td>
                     </tr>
                   ) : (
-                    submissions.filter(s => s.semester === sem).map((doc) => {
+                    submissions.filter(s => {
+                      if (s.semester !== sem) return false;
+                      if (activeRole === 'HOD') return s.isFinalDocumentation === true || s.phase === 'Final';
+                      if (activeRole === 'Admin') {
+                        const isFinal = s.isFinalDocumentation === true || s.phase === 'Final';
+                        const isHodApproved = s.status === 'Pending Admin' || 
+                                              s.approvals?.some(a => a.role === 'HOD' && a.status === 'Approved') ||
+                                              s.status === 'Approved' ||
+                                              s.status === 'Rejected';
+                        return isFinal && isHodApproved;
+                      }
+                      return true;
+                    }).map((doc) => {
                       const docSubmitterId = doc.submittedBy?._id || doc.submittedBy;
                       const currentUserId = user?._id || user?.id;
                       const isSubmitter = !!(docSubmitterId && currentUserId && docSubmitterId.toString() === currentUserId.toString());
@@ -638,9 +681,29 @@ const ProjectSubmission = () => {
                             </button>
                           )}
 
+                          {/* Reviewed or Status Badges */}
+                          {doc.status === 'Approved' && (
+                            <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs inline-flex items-center gap-1">
+                              <CheckCircle2 size={13} className="text-emerald-600" />
+                              Approved
+                            </span>
+                          )}
 
+                          {doc.status === 'Rejected' && (
+                            <span className="px-3 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs inline-flex items-center gap-1">
+                              <XCircle size={13} className="text-rose-600" />
+                              Rejected
+                            </span>
+                          )}
 
-                          {canReview(doc.status) && !isSubmitter && (
+                          {doc.status !== 'Approved' && doc.status !== 'Rejected' && doc.status !== 'Pending Admin' && doc.approvals?.some(a => a.role === activeRole) && (
+                            <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs inline-flex items-center gap-1">
+                              <Check size={13} className="text-blue-600" />
+                              {doc.approvals.find(a => a.role === activeRole)?.status === 'Approved' ? 'Reviewed' : 'Evaluated'}
+                            </span>
+                          )}
+
+                          {canReview(doc.status, doc) && (activeRole === 'Admin' || activeRole === 'HOD' || !isSubmitter) && (
                             <button 
                               onClick={() => {
                                 setSelectedDoc(doc);
@@ -648,13 +711,13 @@ const ProjectSubmission = () => {
                                 setReviewForm({ feedback: '', status: 'Approved', grade: '', score: '' });
                                 setIsReviewModalOpen(true);
                               }}
-                              className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all border border-indigo-500"
+                              className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all border border-indigo-500 cursor-pointer"
                             >
                               Review
                             </button>
                           )}
 
-                          {!doc.isPlaceholder && ['Admin', 'HOD', 'Supervisor', 'Team Leader'].includes(activeRole) && !canReview(doc.status) && !isSubmitter && !userHasGivenFeedback && (
+                          {!doc.isPlaceholder && ['Admin', 'HOD', 'Supervisor', 'Team Leader'].includes(activeRole) && !canReview(doc.status, doc) && doc.status !== 'Approved' && doc.status !== 'Rejected' && !isSubmitter && !userHasGivenFeedback && !doc.approvals?.some(a => a.role === activeRole) && (
                             <button 
                               onClick={() => {
                                 setSelectedDoc(doc);

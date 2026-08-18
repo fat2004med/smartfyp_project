@@ -14,75 +14,84 @@ export const getSubmissions = async (req, res) => {
     const { _id } = req.user;
     let query = {};
 
-    if (project) {
-      query.project = project;
-    } else {
-      if (userRoles.includes('Admin') || activeRole === 'Admin') {
-        query = {};
-      } else if (userRoles.includes('HOD') || activeRole === 'HOD') {
-        let deptId = req.user.department?._id || req.user.department;
-        if (!deptId) {
-          const dept = await Department.findOne({ hod: _id });
-          if (dept) deptId = dept._id;
+    if (activeRole === 'Admin' || userRoles.includes('Admin')) {
+      if (project) query.project = project;
+      // ADMIN REQUIREMENT: Admin Dashboard should show ONLY final documentation submissions after approved by HOD
+      query.$and = [
+        {
+          $or: [
+            { isFinalDocumentation: true },
+            { phase: 'Final' }
+          ]
+        },
+        {
+          $or: [
+            { status: 'Pending Admin' },
+            { approvals: { $elemMatch: { role: 'HOD', status: 'Approved' } } },
+            { status: 'Approved' },
+            { status: 'Rejected' }
+          ]
         }
-        if (deptId) {
-          const deptProjects = await Project.find({ department: deptId });
-          const supervisedProjects = await Project.find({ supervisor: _id });
-          const allProjIds = Array.from(new Set([
-            ...deptProjects.map(p => p._id.toString()),
-            ...supervisedProjects.map(p => p._id.toString())
-          ]));
-          query.project = { $in: allProjIds };
+      ];
+    } else if (activeRole === 'HOD' || userRoles.includes('HOD')) {
+      // HOD Data Isolation: only projects in HOD's department
+      let deptId = req.user.department?._id || req.user.department;
+      if (!deptId) {
+        const dept = await Department.findOne({ hod: _id });
+        if (dept) deptId = dept._id;
+      }
+      if (deptId) {
+        const deptProjects = await Project.find({ department: deptId }).distinct('_id');
+        if (project) {
+          // Verify the requested project belongs to this department
+          const isDeptProj = deptProjects.some(pId => pId.toString() === project.toString());
+          if (!isDeptProj) {
+            return res.json([]);
+          }
+          query.project = project;
         } else {
-          const supervisedProjects = await Project.find({ supervisor: _id });
-          query.project = { $in: supervisedProjects.map(p => p._id) };
+          query.project = { $in: deptProjects };
         }
-      } else if (userRoles.includes('Supervisor') || activeRole === 'Supervisor') {
-        const supervisedProjects = await Project.find({ supervisor: _id });
-        query.project = { $in: supervisedProjects.map(p => p._id) };
       } else {
-        const userProject = await Project.findOne({ 
-          $or: [{ members: _id }, { teamLeader: _id }] 
-        });
-        if (userProject) {
-          query.project = userProject._id;
-        } else {
+        return res.json([]);
+      }
+      // HOD REQUIREMENT: In HOD role dashboard / views, ONLY submissions marked final during creation will be shown
+      query.$or = [
+        { isFinalDocumentation: true },
+        { phase: 'Final' }
+      ];
+    } else if (activeRole === 'Supervisor' || userRoles.includes('Supervisor')) {
+      // Supervisor Data Isolation: ONLY projects supervised by this user
+      const supervisedProjects = await Project.find({ supervisor: _id }).distinct('_id');
+      if (project) {
+        const isSupervised = supervisedProjects.some(pId => pId.toString() === project.toString());
+        if (!isSupervised) {
           return res.json([]);
         }
+        query.project = project;
+      } else {
+        query.project = { $in: supervisedProjects };
+      }
+    } else {
+      // Team Leader or Team Member Data Isolation: ONLY their own team/project
+      const userProjects = await Project.find({ 
+        $or: [{ members: _id }, { teamLeader: _id }] 
+      }).distinct('_id');
+      if (userProjects.length === 0) {
+        return res.json([]);
+      }
+      if (project) {
+        const isMember = userProjects.some(pId => pId.toString() === project.toString());
+        if (!isMember) {
+          return res.json([]);
+        }
+        query.project = project;
+      } else {
+        query.project = { $in: userProjects };
       }
     }
 
-    // Role-based visibility filtering only when NOT querying a specific project
-    let roleFilter = {};
-    if (!project) {
-      if (activeRole === 'Team Member') {
-        roleFilter = { submittedBy: _id };
-      } else if (activeRole === 'Team Leader') {
-        roleFilter = {
-          $or: [
-            { submittedBy: _id },
-            { status: { $ne: 'Not Submitted' } }
-          ]
-        };
-      } else if (activeRole === 'Supervisor') {
-        roleFilter = {
-          $or: [
-            { submittedBy: _id },
-            { status: { $in: ["Pending Supervisor", "Pending HOD", "Pending Admin", "Approved", "Rejected", "Submitted"] } }
-          ]
-        };
-      } else if (activeRole === 'HOD') {
-        roleFilter = {
-          status: { $in: ["Pending Supervisor", "Pending HOD", "Pending Admin", "Approved", "Rejected", "Submitted"] }
-        };
-      }
-    }
-
-    const finalQuery = Object.keys(roleFilter).length > 0 
-      ? { $and: [query, roleFilter] }
-      : query;
-
-    const submissions = await Submission.find(finalQuery)
+    const submissions = await Submission.find(query)
       .populate({
         path: "project",
         select: "title department supervisor teamLeader members academicYear batch status currentPhase isApprovedBySupervisor isApprovedByHOD isApprovedByAdmin",
@@ -433,16 +442,24 @@ export const approveSubmission = async (req, res) => {
     const isAdmin = userRoles.includes("Admin") || activeRole === "Admin";
     const isTeamLeader = userRoles.includes("Team Leader") || activeRole === "Team Leader";
 
-    // Determine the effective role for this approval
+    // Determine the effective role for this approval based on activeRole first
     let approvalRole = activeRole;
-    if (isAdmin) {
+    if (activeRole === "Supervisor") {
+      approvalRole = "Supervisor";
+    } else if (activeRole === "HOD") {
+      approvalRole = "HOD";
+    } else if (activeRole === "Team Leader") {
+      approvalRole = "Team Leader";
+    } else if (activeRole === "Admin") {
       approvalRole = "Admin";
     } else if (isSupervisor && submission.status === "Pending Supervisor") {
       approvalRole = "Supervisor";
-    } else if (isHOD && (submission.status === "Pending HOD" || !isSupervisor)) {
+    } else if (isHOD && submission.status === "Pending HOD") {
       approvalRole = "HOD";
     } else if (isTeamLeader && submission.status === "Pending TL") {
       approvalRole = "Team Leader";
+    } else if (isAdmin) {
+      approvalRole = "Admin";
     }
 
     // Initialize arrays if missing

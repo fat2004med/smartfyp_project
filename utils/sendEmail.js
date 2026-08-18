@@ -89,6 +89,10 @@ export const getEmailConfig = () => {
 const createTransporter = (config, strategy = "primary") => {
   const { user, pass, host, port, service, secure } = config;
 
+  const connectionTimeout = 4000;
+  const greetingTimeout = 4000;
+  const socketTimeout = 5000;
+
   if (strategy === "gmail-service" || (service === "gmail" && !host)) {
     return nodemailer.createTransport({
       service: "gmail",
@@ -96,9 +100,9 @@ const createTransporter = (config, strategy = "primary") => {
       tls: {
         rejectUnauthorized: false,
       },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 12000,
+      connectionTimeout,
+      greetingTimeout,
+      socketTimeout,
     });
   }
 
@@ -112,9 +116,9 @@ const createTransporter = (config, strategy = "primary") => {
       tls: {
         rejectUnauthorized: false,
       },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 12000,
+      connectionTimeout,
+      greetingTimeout,
+      socketTimeout,
     });
   }
 
@@ -127,9 +131,9 @@ const createTransporter = (config, strategy = "primary") => {
       tls: {
         rejectUnauthorized: false,
       },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 12000,
+      connectionTimeout,
+      greetingTimeout,
+      socketTimeout,
     });
   }
 
@@ -142,9 +146,9 @@ const createTransporter = (config, strategy = "primary") => {
     tls: {
       rejectUnauthorized: false,
     },
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 12000,
+    connectionTimeout,
+    greetingTimeout,
+    socketTimeout,
   });
 };
 

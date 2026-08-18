@@ -63,25 +63,22 @@ const playNotificationSound = () => {
 
 export const NotificationProvider = ({ children }) => {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState(() => user ? [] : DUMMY_NOTIFICATIONS);
-  const [unreadCount, setUnreadCount] = useState(() => user ? 0 : DUMMY_NOTIFICATIONS.length);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [activePopups, setActivePopups] = useState([]);
   const [prevUserId, setPrevUserId] = useState(() => user?._id || null);
   const isFirstFetchRef = useRef(true);
+  const seenNotificationIds = useRef(new Set());
 
-  // Synchronize state during render to clear temporary DUMMY_NOTIFICATIONS immediately when user logs in/out
+  // Synchronize state when user changes
   if ((user?._id || null) !== prevUserId) {
     setPrevUserId(user?._id || null);
-    if (user) {
-      setNotifications([]);
-      setUnreadCount(0);
-      setActivePopups([]);
-    } else {
-      setNotifications(DUMMY_NOTIFICATIONS);
-      setUnreadCount(DUMMY_NOTIFICATIONS.length);
-      setActivePopups([]);
-    }
+    setNotifications([]);
+    setUnreadCount(0);
+    setActivePopups([]);
+    seenNotificationIds.current.clear();
+    isFirstFetchRef.current = true;
   }
 
   const dismissPopup = useCallback((popupId) => {
@@ -93,29 +90,32 @@ export const NotificationProvider = ({ children }) => {
     
     try {
       setLoading(true);
-      const res = await axios.get("/api/notifications", { 
+      const res = await axios.get(`/api/notifications?t=${Date.now()}`, { 
         signal,
         timeout: 10000 
       });
       
       const data = res && res.data && Array.isArray(res.data) ? res.data : [];
       
-      setNotifications(prev => {
-        // Compare with previous list to detect newly arrived unread notifications
-        // Don't toast dummy notifications or initial loaded items if previous list was just the default dummy
-        const isDefaultDummy = prev.length === 2 && prev[0]._id === 'dummy1' && prev[1]._id === 'dummy2';
-        
-        const prevIds = new Set(prev.map(n => n._id));
-        const newUnreadList = data.filter(n => !n.isRead && !prevIds.has(n._id));
-        
-        const isFirstLoad = isFirstFetchRef.current;
+      if (isFirstFetchRef.current) {
+        // Initial fetch for current session / role: seed seen set, do not trigger popups
+        data.forEach(n => seenNotificationIds.current.add(n._id));
         isFirstFetchRef.current = false;
-        
-        if (newUnreadList.length > 0 && !isDefaultDummy && !isFirstLoad && prev.length > 0) {
-          // Play buzzer sound and trigger beautiful toast alerts
+      } else {
+        // Subsequent poll: only trigger popups for genuinely new real-time items created within last 60s
+        const now = Date.now();
+        const brandNewUnread = data.filter(n => 
+          !n.isRead && 
+          !seenNotificationIds.current.has(n._id) &&
+          (now - new Date(n.createdAt).getTime() < 60000)
+        );
+
+        if (brandNewUnread.length > 0) {
           playNotificationSound();
-          newUnreadList.forEach(n => {
-            const popupId = n._id + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
+          const toPopup = brandNewUnread.slice(0, 2);
+          toPopup.forEach(n => {
+            seenNotificationIds.current.add(n._id);
+            const popupId = `${n._id}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
             const newPopup = {
               popupId,
               _id: n._id,
@@ -125,15 +125,16 @@ export const NotificationProvider = ({ children }) => {
               link: n.link,
               createdAt: n.createdAt
             };
-            setActivePopups(prevPopups => [...prevPopups, newPopup]);
+            setActivePopups(prevPopups => [...prevPopups.slice(-2), newPopup]);
             setTimeout(() => {
               setActivePopups(prevPopups => prevPopups.filter(p => p.popupId !== popupId));
             }, 6000);
           });
         }
-        return data;
-      });
-      
+        data.forEach(n => seenNotificationIds.current.add(n._id));
+      }
+
+      setNotifications(data);
       setUnreadCount(data.filter(n => !n.isRead).length);
     } catch (error) {
       if (axios.isCancel(error)) {
@@ -141,11 +142,7 @@ export const NotificationProvider = ({ children }) => {
       }
       
       const isNetworkError = error.message === "Network Error" || !error.response;
-      
-      if (isNetworkError) {
-        // Silently handle transient network errors during background polling
-        console.warn("Poll: Network connectivity issue or server restarting...");
-      } else {
+      if (!isNetworkError) {
         console.error("Error fetching notifications:", error.message || error);
       }
     } finally {
@@ -155,13 +152,13 @@ export const NotificationProvider = ({ children }) => {
 
   useEffect(() => {
     isFirstFetchRef.current = true;
+    seenNotificationIds.current.clear();
+    setActivePopups([]);
+
     if (!user) {
-      const timer = setTimeout(() => {
-        setNotifications(DUMMY_NOTIFICATIONS);
-        setUnreadCount(DUMMY_NOTIFICATIONS.length);
-        setActivePopups([]);
-      }, 0);
-      return () => clearTimeout(timer);
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
     }
 
     let timeoutId;
@@ -169,12 +166,10 @@ export const NotificationProvider = ({ children }) => {
     
     const poll = async () => {
       await fetchNotifications(controller.signal);
-      // Recursive safety timeout: check every 4 seconds for immediate feel
       timeoutId = setTimeout(poll, 4000);
     };
     
-    // Initial fetch after a small delay to ensure Auth headers are fully ready
-    timeoutId = setTimeout(poll, 1000);
+    timeoutId = setTimeout(poll, 500);
     
     return () => {
       controller.abort();
@@ -184,6 +179,9 @@ export const NotificationProvider = ({ children }) => {
 
   useEffect(() => {
     const handleRoleChanged = () => {
+      isFirstFetchRef.current = true;
+      seenNotificationIds.current.clear();
+      setActivePopups([]);
       fetchNotifications();
     };
     window.addEventListener('roleChanged', handleRoleChanged);

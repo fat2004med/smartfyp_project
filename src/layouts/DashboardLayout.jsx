@@ -389,36 +389,6 @@ const DashboardLayout = ({ children }) => {
           </div>
 
           <div className="flex items-center gap-2 lg:gap-4">
-            {/* Multi-role Switcher */}
-            {user?.role && user.role.split(',').length > 1 && (
-              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-2xl border border-gray-200">
-                {user.role.split(',').map(r => r.trim()).map((role) => {
-                  const rolePath = role === 'Admin' ? '/dashboard/admin' :
-                                   role === 'HOD' ? '/dashboard/hod' :
-                                   role === 'Supervisor' ? '/dashboard/supervisor' :
-                                   role === 'Team Leader' ? '/dashboard/team-leader' :
-                                   '/dashboard/team-member';
-                  const isActive = activeRole === role;
-                  return (
-                    <button
-                      key={role}
-                      onClick={() => {
-                        localStorage.setItem('activeDashboardRole', role);
-                        navigate(rolePath);
-                      }}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-                        isActive
-                          ? 'bg-white text-blue-600 shadow-sm'
-                          : 'text-gray-500 hover:text-gray-800'
-                      }`}
-                    >
-                      {role}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
             <div className="relative" ref={notificationsRef}>
               <button 
                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}

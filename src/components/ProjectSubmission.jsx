@@ -23,37 +23,40 @@ import {
   ShieldCheck
 } from 'lucide-react';
 
-const ProjectSelector = ({ currentProject, onSelect }) => {
+const ProjectSelector = ({ currentProject, onSelect, activeRole }) => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchProjects = async () => {
     try {
       const { data } = await axios.get('/api/projects');
-      setProjects(data);
+      setProjects(data || []);
     } catch (error) {
       console.error('Error fetching projects:', error);
     }
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchProjects().finally(() => setLoading(false));
-    }, 0);
-    return () => clearTimeout(timer);
+    fetchProjects().finally(() => setLoading(false));
   }, []);
+
+  const allLabel = activeRole === 'Supervisor' 
+    ? 'All Supervised Projects' 
+    : activeRole === 'HOD' 
+    ? 'All Department Projects' 
+    : 'All Projects';
 
   return (
     <select 
-      className="bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto min-w-0 sm:min-w-[200px] max-w-full truncate shadow-sm cursor-pointer"
+      className="bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto min-w-0 sm:min-w-[220px] max-w-full truncate shadow-sm cursor-pointer"
       value={currentProject?._id || ''}
       onFocus={fetchProjects}
       onChange={(e) => {
-        const p = projects.find(proj => proj._id === e.target.value);
+        const p = projects.find(proj => proj._id === e.target.value) || null;
         onSelect(p);
       }}
     >
-      <option value="">{loading ? 'Loading projects...' : 'Select Project...'}</option>
+      <option value="">{loading ? 'Loading projects...' : allLabel}</option>
       {projects.map(p => (
         <option key={p._id} value={p._id}>{p.title}</option>
       ))}
@@ -123,29 +126,22 @@ const ProjectSubmission = () => {
     }
   };
 
-  const fetchProjectData = useCallback(async (selectedProject = null) => {
+  const fetchProjectData = useCallback(async (selectedProject = undefined) => {
     setLoading(true);
     try {
-      let targetProject = selectedProject || projectRef.current;
+      let targetProject = selectedProject !== undefined ? selectedProject : projectRef.current;
 
-      // If no project selected yet OR we are a student, try to find the specific project
-      if (!targetProject || ['Team Leader', 'Team Member'].includes(activeRole)) {
+      // If student (Team Leader / Team Member), fetch their own project
+      if (['Team Leader', 'Team Member'].includes(activeRole)) {
         try {
           const { data: myProj } = await axios.get('/api/projects/my-project');
           targetProject = myProj;
-          if (targetProject) setProject(targetProject); // Update state immediately
+          setProject(myProj);
         } catch (e) {
-          // If not a student project, try to find any project for admins/hods/supervisors
-          if (!targetProject && ['Admin', 'HOD', 'Supervisor'].includes(activeRole)) {
-            const { data: projects } = await axios.get('/api/projects');
-            if (projects && projects.length > 0) {
-              targetProject = projects[0];
-              setProject(targetProject);
-            }
-          }
+          console.error('Error fetching my-project:', e);
         }
-      } else {
-        // Fetch real-time updated details of the selected project
+      } else if (targetProject) {
+        // If a specific project is selected, fetch its latest details
         try {
           const { data: latestProj } = await axios.get(`/api/projects/${targetProject._id}`);
           if (latestProj) {
@@ -155,13 +151,13 @@ const ProjectSubmission = () => {
         } catch (e) {
           console.error('Error fetching latest project:', e);
         }
+      } else {
+        setProject(null);
       }
       
-      if (targetProject || ['Admin', 'HOD', 'Supervisor'].includes(activeRole)) {
-        const queryUrl = targetProject ? `/api/submissions?project=${targetProject._id}` : '/api/submissions';
-        const { data: subs } = await axios.get(queryUrl);
-        setSubmissions(subs);
-      }
+      const queryUrl = targetProject ? `/api/submissions?project=${targetProject._id}` : '/api/submissions';
+      const { data: subs } = await axios.get(queryUrl);
+      setSubmissions(subs || []);
     } catch (error) {
       console.error('Error fetching project data:', error);
     } finally {
@@ -322,15 +318,16 @@ const ProjectSubmission = () => {
     // Check if the current user or active role has already reviewed this document
     const currentUserId = user?._id || user?.id;
     const hasAlreadyReviewed = doc?.approvals?.some(a => 
-      a.role === activeRole && (a.status === 'Approved' || a.status === 'Rejected')
+      (a.role === activeRole || (a.approvedBy && (a.approvedBy._id || a.approvedBy).toString() === currentUserId?.toString())) &&
+      (a.status === 'Approved' || a.status === 'Rejected')
     );
-    if (hasAlreadyReviewed && status !== 'Pending Admin' && activeRole !== 'Admin') return false;
+    if (hasAlreadyReviewed) return false;
 
     if (activeRole === 'Admin') {
-      // In Admin dashboard, any unfinalized submission displayed to admin can be reviewed/evaluated
-      return true;
+      // In Admin dashboard, any unfinalized submission pending Admin can be reviewed
+      return ['Pending Admin', 'Pending'].includes(status) || doc?.isFinalDocumentation;
     }
-    if (activeRole === 'HOD') return ['Pending HOD', 'Pending Admin'].includes(status);
+    if (activeRole === 'HOD') return ['Pending HOD'].includes(status);
     if (activeRole === 'Supervisor') return ['Pending Supervisor', 'Pending', 'Submitted'].includes(status);
     if (activeRole === 'Team Leader') return ['Pending TL', 'Pending', 'Submitted'].includes(status);
     return false;
@@ -362,13 +359,20 @@ const ProjectSubmission = () => {
     <div className="w-full max-w-none space-y-6 sm:space-y-8 pb-12 px-0 lg:px-0 animate-in fade-in duration-300">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-100 pb-4 lg:pb-0 lg:border-b-0">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Project Submissions</h1>
-          <p className="text-sm text-gray-500 mt-1 font-medium">Manage and track your FYP document submissions across semesters</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+            {activeRole === 'Team Member' ? 'My Project Submissions' : 'Project Submissions'}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1 font-medium">
+            {activeRole === 'Team Member' 
+              ? 'Manage and track submissions created by you across semesters' 
+              : 'Manage and track your FYP document submissions across semesters'}
+          </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
           {['Admin', 'HOD', 'Supervisor'].includes(activeRole) && (
             <ProjectSelector 
               currentProject={project} 
+              activeRole={activeRole}
               onSelect={(p) => {
                 setProject(p);
                 fetchProjectData(p);
@@ -393,19 +397,6 @@ const ProjectSubmission = () => {
           </div>
         </div>
       </div>
-
-{/* ProjectSelector Component (Internal) */}
-{/* Define it outside or inside? Let's put it in a separate helper or just inline a small dropdown here */}
-
-{['Admin', 'HOD', 'Supervisor'].includes(activeRole) && !project && (
-  <div className="bg-amber-50 border border-amber-200 p-6 rounded-3xl text-amber-700 flex items-center gap-4">
-    <AlertCircle size={24} />
-    <div>
-      <p className="font-bold">No project selected</p>
-      <p className="text-sm">Please select a project from the dropdown to manage its submission slots and view its data.</p>
-    </div>
-  </div>
-)}
 
       {[7, 8].map(sem => (
         <div key={sem} className="space-y-4">
@@ -434,7 +425,12 @@ const ProjectSubmission = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {submissions.filter(s => {
-                    if (s.semester !== sem) return false;
+                    if (Number(s.semester || 7) !== sem) return false;
+                    if (activeRole === 'Team Member') {
+                      const docSubmitterId = s.submittedBy?._id || s.submittedBy;
+                      const currentUserId = user?._id || user?.id;
+                      return !!(docSubmitterId && currentUserId && docSubmitterId.toString() === currentUserId.toString());
+                    }
                     if (activeRole === 'HOD') return s.isFinalDocumentation === true || s.phase === 'Final';
                     if (activeRole === 'Admin') {
                       const isFinal = s.isFinalDocumentation === true || s.phase === 'Final';
@@ -455,6 +451,8 @@ const ProjectSubmission = () => {
                               ? `No final documentation submissions approved by HOD for Semester ${sem}` 
                               : activeRole === 'HOD' 
                               ? `No final documentation submissions registered for Semester ${sem}` 
+                              : activeRole === 'Team Member'
+                              ? `No submissions created by you for Semester ${sem}`
                               : `No submission slots defined yet for Semester ${sem}`}
                           </p>
                           {['Team Leader', 'Team Member'].includes(activeRole) && (
@@ -465,7 +463,12 @@ const ProjectSubmission = () => {
                     </tr>
                   ) : (
                     submissions.filter(s => {
-                      if (s.semester !== sem) return false;
+                      if (Number(s.semester || 7) !== sem) return false;
+                      if (activeRole === 'Team Member') {
+                        const docSubmitterId = s.submittedBy?._id || s.submittedBy;
+                        const currentUserId = user?._id || user?.id;
+                        return !!(docSubmitterId && currentUserId && docSubmitterId.toString() === currentUserId.toString());
+                      }
                       if (activeRole === 'HOD') return s.isFinalDocumentation === true || s.phase === 'Final';
                       if (activeRole === 'Admin') {
                         const isFinal = s.isFinalDocumentation === true || s.phase === 'Final';
@@ -696,10 +699,10 @@ const ProjectSubmission = () => {
                             </span>
                           )}
 
-                          {doc.status !== 'Approved' && doc.status !== 'Rejected' && doc.status !== 'Pending Admin' && doc.approvals?.some(a => a.role === activeRole) && (
+                          {doc.status !== 'Approved' && doc.status !== 'Rejected' && doc.approvals?.some(a => a.role === activeRole || (a.approvedBy && (a.approvedBy._id || a.approvedBy).toString() === (user?._id || user?.id)?.toString())) && (
                             <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs inline-flex items-center gap-1">
                               <Check size={13} className="text-blue-600" />
-                              {doc.approvals.find(a => a.role === activeRole)?.status === 'Approved' ? 'Reviewed' : 'Evaluated'}
+                              {doc.approvals.find(a => a.role === activeRole || (a.approvedBy && (a.approvedBy._id || a.approvedBy).toString() === (user?._id || user?.id)?.toString()))?.status === 'Approved' ? 'Reviewed' : 'Evaluated'}
                             </span>
                           )}
 
@@ -742,7 +745,7 @@ const ProjectSubmission = () => {
                             </button>
                           )}
 
-                          {((!doc.fileUrl && ['Team Member', 'Team Leader'].includes(activeRole)) || (doc.status === 'Rejected' && isSubmitter) || (activeRole === 'Team Member' && doc.status === 'Pending TL' && isSubmitter)) ? (
+                          {(((!doc.fileUrl || doc.status === 'Not Submitted') && ['Team Member', 'Team Leader'].includes(activeRole)) || (doc.status === 'Rejected' && ['Team Member', 'Team Leader'].includes(activeRole)) || (activeRole === 'Team Member' && doc.status === 'Pending TL') || (activeRole === 'Team Leader' && doc.status === 'Pending Supervisor')) ? (
                             <button 
                               onClick={() => handleSubmitClick(doc)}
                               className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-bold text-xs transition-all bg-gray-900 text-white hover:bg-black"

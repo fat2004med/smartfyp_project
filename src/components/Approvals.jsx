@@ -53,6 +53,10 @@ const Approvals = () => {
           status = 'Approved';
         } else if (p.status === 'Rejected') {
           status = 'Rejected';
+        } else if (activeRole === 'HOD' && p.isApprovedByHOD) {
+          status = 'Approved';
+        } else if (activeRole === 'Supervisor' && p.isApprovedBySupervisor) {
+          status = 'Approved';
         } else {
           status = 'Pending';
         }
@@ -60,6 +64,7 @@ const Approvals = () => {
         list.push({
           id: p._id,
           rawId: p._id,
+          rawStatus: p.status,
           category: 'project',
           type: 'Project Proposal',
           title: p.title,
@@ -92,13 +97,22 @@ const Approvals = () => {
         if (activeRole === 'Admin' && (!isFinal || !isHodApproved)) return;
 
         let status = 'Pending';
-        if (s.status === 'Approved') status = 'Approved';
-        else if (s.status === 'Rejected') status = 'Rejected';
-        else status = 'Pending';
+        if (s.status === 'Approved') {
+          status = 'Approved';
+        } else if (s.status === 'Rejected') {
+          status = 'Rejected';
+        } else if (activeRole === 'HOD' && (s.status === 'Pending Admin' || s.approvals?.some(a => a.role === 'HOD' && a.status === 'Approved'))) {
+          status = 'Approved';
+        } else if (activeRole === 'Supervisor' && (s.status === 'Pending HOD' || s.status === 'Pending Admin' || s.approvals?.some(a => a.role === 'Supervisor' && a.status === 'Approved'))) {
+          status = 'Approved';
+        } else {
+          status = 'Pending';
+        }
 
         list.push({
           id: s._id,
           rawId: s._id,
+          rawStatus: s.status,
           category: 'submission',
           type: s.isFinalDocumentation ? 'Final Documentation' : (s.title || 'Deliverable Submission'),
           title: s.title,
@@ -321,7 +335,7 @@ const Approvals = () => {
                     <span className={`text-sm font-bold ${
                       approval.status === 'Approved' ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {approval.status}
+                      {activeRole === 'HOD' && approval.rawStatus === 'Pending Admin' ? 'Reviewed (Pending Admin)' : approval.status}
                     </span>
                   </div>
                 )}

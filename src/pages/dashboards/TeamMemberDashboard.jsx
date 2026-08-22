@@ -38,7 +38,7 @@ import {
   Area
 } from 'recharts';
 
-const DashboardOverview = ({ stats, weeklyProgress, taskData, pendingAssignments, recentFeedbacks, recentTasks, deadlineProximity }) => {
+const DashboardOverview = ({ stats, weeklyProgress, taskData, pendingAssignments, recentFeedbacks, recentTasks, deadlineProximity, submissions = [] }) => {
   const lessThan2d = deadlineProximity?.lessThan2d ?? 0;
   const between2And5d = deadlineProximity?.between2And5d ?? 0;
   const oneWeekPlus = deadlineProximity?.oneWeekPlus ?? 0;
@@ -329,8 +329,8 @@ const DashboardOverview = ({ stats, weeklyProgress, taskData, pendingAssignments
                     <div key={`tm-recent-task-${task.id || idx}`} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex items-center justify-between group/task hover:bg-white hover:border-blue-100 transition-all">
                       <div className="flex items-center gap-4">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${
-                           task.priority === 'High' ? 'bg-red-100 text-red-600' : 
-                           task.priority === 'Medium' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'
+                            task.priority === 'High' ? 'bg-red-100 text-red-600' : 
+                            task.priority === 'Medium' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'
                         }`}>
                           <CheckSquare size={18} />
                         </div>
@@ -354,6 +354,80 @@ const DashboardOverview = ({ stats, weeklyProgress, taskData, pendingAssignments
                   <p className="text-center py-6 text-sm text-gray-400 italic">No recent tasks</p>
                 )}
               </div>
+           </div>
+
+           {/* Project Submissions & Deliverables */}
+           <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm transition-all hover:shadow-md">
+             <div className="flex items-center justify-between mb-6">
+               <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                   <FileText size={20} />
+                 </div>
+                 <div>
+                   <h2 className="text-xl font-bold text-gray-900">My Submissions & Deliverables</h2>
+                   <p className="text-xs text-gray-400 font-medium">Submissions & deliverables created by you</p>
+                 </div>
+               </div>
+               <Link 
+                 to="/dashboard/team-member/submissions" 
+                 className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-all"
+               >
+                 View Submissions
+               </Link>
+             </div>
+             
+             {submissions && submissions.length > 0 ? (
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 {submissions.map((sub, index) => {
+                   let statusColor = "bg-gray-100 text-gray-700 border-gray-200";
+                   if (sub.status === 'Approved') statusColor = "bg-green-100 text-green-700 border-green-200";
+                   else if (sub.status === 'Rejected') statusColor = "bg-red-100 text-red-700 border-red-200";
+                   else if (sub.status?.startsWith('Pending')) statusColor = "bg-amber-100 text-amber-700 border-amber-200";
+
+                   return (
+                     <div key={`tm-sub-${sub._id || index}`} className="flex flex-col justify-between p-4 rounded-2xl hover:bg-gray-50/50 transition-all border border-gray-100 bg-white shadow-sm hover:shadow-md">
+                       <div className="flex items-start gap-3">
+                         <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                           <FileText size={20} />
+                         </div>
+                         <div className="min-w-0 flex-1">
+                           <h4 className="font-bold text-sm text-gray-900 truncate" title={sub.title}>{sub.title}</h4>
+                           <p className="text-xs text-gray-500 mt-1">
+                             Phase: <span className="font-semibold text-gray-700">{sub.phase}</span> • Sem {sub.semester || 7}
+                           </p>
+                         </div>
+                       </div>
+                       <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-50 text-[10px]">
+                         <span className="text-gray-400 truncate max-w-[140px]" title={sub.submittedBy?.name}>
+                           Created by: <span className="font-bold text-gray-600">{sub.submittedBy?.name || 'You'}</span>
+                         </span>
+                         <span className={`font-bold uppercase px-2.5 py-0.5 rounded-lg border text-[9px] ${statusColor}`}>
+                           {sub.status === 'Pending TL' ? 'Pending TL' :
+                            sub.status === 'Pending Supervisor' ? 'Under Supervisor' :
+                            sub.status === 'Pending HOD' ? 'Under HOD' :
+                            sub.status === 'Pending Admin' ? 'Under Admin' : sub.status}
+                         </span>
+                       </div>
+                     </div>
+                   );
+                 })}
+               </div>
+             ) : (
+               <div className="py-8 text-center text-gray-400 space-y-3 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-100">
+                 <div className="w-12 h-12 bg-white border border-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                   <FileText size={24} />
+                 </div>
+                 <p className="text-xs italic text-gray-500">No submissions created by you yet.</p>
+               </div>
+             )}
+             <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+               <Link 
+                 to="/dashboard/team-member/submissions" 
+                 className="flex items-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm"
+               >
+                 Go to Project Submissions Page
+               </Link>
+             </div>
            </div>
         </div>
 
@@ -485,6 +559,7 @@ const TeamMemberDashboard = () => {
             recentFeedbacks={recentFeedbacks} 
             recentTasks={recentTasks}
             deadlineProximity={statsData?.deadlineProximity}
+            submissions={statsData?.submissions || []}
           />
         } />
         <Route path="/assignments" element={<Assignments />} />

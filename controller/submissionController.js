@@ -11,10 +11,11 @@ export const getSubmissions = async (req, res) => {
     const { project } = req.query;
     const activeRole = req.activeRole || (req.user?.role ? req.user.role.split(',')[0].trim() : '');
     const userRoles = req.user?.role ? req.user.role.split(',').map(r => r.trim()) : [];
+    const roleToUse = activeRole || userRoles[0] || '';
     const { _id } = req.user;
     let query = {};
 
-    if (activeRole === 'Admin' || userRoles.includes('Admin')) {
+    if (roleToUse === 'Admin') {
       if (project) query.project = project;
       // ADMIN REQUIREMENT: Admin Dashboard should show ONLY final documentation submissions after approved by HOD
       query.$and = [
@@ -33,7 +34,7 @@ export const getSubmissions = async (req, res) => {
           ]
         }
       ];
-    } else if (activeRole === 'HOD' || userRoles.includes('HOD')) {
+    } else if (roleToUse === 'HOD') {
       // HOD Data Isolation: only projects in HOD's department
       let deptId = req.user.department?._id || req.user.department;
       if (!deptId) {
@@ -60,7 +61,7 @@ export const getSubmissions = async (req, res) => {
         { isFinalDocumentation: true },
         { phase: 'Final' }
       ];
-    } else if (activeRole === 'Supervisor' || userRoles.includes('Supervisor')) {
+    } else if (roleToUse === 'Supervisor') {
       // Supervisor Data Isolation: ONLY projects supervised by this user
       const supervisedProjects = await Project.find({ supervisor: _id }).distinct('_id');
       if (project) {
@@ -72,8 +73,26 @@ export const getSubmissions = async (req, res) => {
       } else {
         query.project = { $in: supervisedProjects };
       }
+    } else if (roleToUse === 'Team Member') {
+      // Team Member Data Isolation: ONLY submissions created by this team member for their project
+      const userProjects = await Project.find({ 
+        $or: [{ members: _id }, { teamLeader: _id }] 
+      }).distinct('_id');
+      if (userProjects.length === 0) {
+        return res.json([]);
+      }
+      query.submittedBy = _id;
+      if (project) {
+        const isMember = userProjects.some(pId => pId.toString() === project.toString());
+        if (!isMember) {
+          return res.json([]);
+        }
+        query.project = project;
+      } else {
+        query.project = { $in: userProjects };
+      }
     } else {
-      // Team Leader or Team Member Data Isolation: ONLY their own team/project
+      // Team Leader Data Isolation: ONLY their own team/project
       const userProjects = await Project.find({ 
         $or: [{ members: _id }, { teamLeader: _id }] 
       }).distinct('_id');
@@ -284,9 +303,22 @@ export const createSubmission = async (req, res) => {
       await syncFinalDocumentation(projectId, submission);
     }
 
-    // Notify Team Leader or Supervisor
+    // Notify Team Members, Team Leader or Supervisor
     try {
-      if (initialStatus === "Pending TL" && project.teamLeader) {
+      if (initialStatus === "Not Submitted") {
+        const memberRecipients = [...(project.members || [])].filter(mId => mId && mId.toString() !== req.user._id.toString());
+        for (const mId of memberRecipients) {
+          await Notification.create({
+            recipient: mId,
+            sender: req.user._id,
+            title: "New Submission Slot Created",
+            message: `A new submission slot "${submission.title}" has been opened for project "${project.title}".`,
+            type: "Submission",
+            link: "/dashboard/team-member/submissions",
+            targetRole: "Team Member"
+          });
+        }
+      } else if (initialStatus === "Pending TL" && project.teamLeader) {
         await Notification.create({
           recipient: project.teamLeader,
           sender: req.user._id,

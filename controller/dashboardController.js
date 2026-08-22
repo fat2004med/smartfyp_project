@@ -699,14 +699,14 @@ export const getTeamStats = async (req, res) => {
 
     const submissions = isLeader
       ? await Submission.find({ project: project._id })
-          .populate("submittedBy", "name")
+          .populate("submittedBy", "name role")
           .populate({
             path: "feedbacks",
             populate: { path: "author", select: "name role" }
           })
           .sort({ createdAt: -1 })
       : await Submission.find({ project: project._id, submittedBy: userId })
-          .populate("submittedBy", "name")
+          .populate("submittedBy", "name role")
           .populate({
             path: "feedbacks",
             populate: { path: "author", select: "name role" }
@@ -774,9 +774,7 @@ export const getTeamStats = async (req, res) => {
     const pendingAssignments = pendingAssignmentsList.slice(0, 3);
 
     // Fetch feedbacks related to project submissions
-    const submissionIds = isLeader
-      ? await Submission.find({ project: project._id }).distinct('_id')
-      : await Submission.find({ project: project._id, submittedBy: userId }).distinct('_id');
+    const submissionIds = await Submission.find({ project: project._id }).distinct('_id');
     
     const recentFeedbacks = await Feedback.find({ submission: { $in: submissionIds } })
       .populate('author', 'name role')

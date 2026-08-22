@@ -288,7 +288,7 @@ const DashboardOverview = ({ stats, statsData, supervisorStats, deptPerformance,
                             className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black tracking-tight flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
                             onClick={() => onViewProjectDetails && onViewProjectDetails(proj)}
                           >
-                            <Eye size={14} /> Review
+                            <Eye size={14} /> View Details
                           </button>
 
                           {isPendingHOD && (

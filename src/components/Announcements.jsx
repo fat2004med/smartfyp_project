@@ -32,6 +32,7 @@ const Announcements = () => {
   const [filterPriority, setFilterPriority] = useState('All Priorities');
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
+  const [hasAllocatedTeam, setHasAllocatedTeam] = useState(true);
   
   const [announcementData, setAnnouncementData] = useState({ created: [], assigned: [] });
 
@@ -57,6 +58,19 @@ const Announcements = () => {
     // Only target roles strictly below active role
     return roleHierarchy.slice(userRoleIndex + 1);
   };
+
+  const checkTeamAllocation = useCallback(async () => {
+    if (activeRole === 'Supervisor' || activeRole === 'Team Leader') {
+      try {
+        const { data } = await axios.get('/api/projects');
+        setHasAllocatedTeam(Array.isArray(data) && data.length > 0);
+      } catch (error) {
+        console.error('Error checking project allocation:', error);
+      }
+    } else {
+      setHasAllocatedTeam(true);
+    }
+  }, [activeRole]);
 
   const fetchAnnouncements = useCallback(async () => {
     try {
@@ -86,6 +100,16 @@ const Announcements = () => {
         if (authorId === user._id?.toString() && cRole === activeRole) {
           return false;
         }
+
+        // Only show announcements created after the user's registration for non-Admin roles
+        if (user?.createdAt && a.createdAt && user.role !== 'Admin') {
+          const userCreatedTime = new Date(user.createdAt).getTime();
+          const annCreatedTime = new Date(a.createdAt).getTime();
+          if (authorId !== user._id?.toString() && annCreatedTime < userCreatedTime) {
+            return false;
+          }
+        }
+
         return true;
       });
 
@@ -95,14 +119,17 @@ const Announcements = () => {
     } finally {
       setLoading(false);
     }
-  }, [user._id, activeRole]);
+  }, [user?._id, user?.createdAt, user?.role, activeRole]);
 
   useEffect(() => {
     const load = async () => {
-      await fetchAnnouncements();
+      await Promise.all([
+        fetchAnnouncements(),
+        checkTeamAllocation()
+      ]);
     };
     load();
-  }, [fetchAnnouncements]);
+  }, [fetchAnnouncements, checkTeamAllocation]);
 
   const handleCreateOrUpdate = async (e) => {
     e.preventDefault();
@@ -256,6 +283,10 @@ const Announcements = () => {
              {activeRole !== 'Team Member' && (
                <button 
                  onClick={() => {
+                   if (!hasAllocatedTeam && (activeRole === 'Supervisor' || activeRole === 'Team Leader')) {
+                     toast.error("You cannot create announcements until a team/project is allocated to you.");
+                     return;
+                   }
                    setEditingId(null);
                    setNewAnnouncement({
                      title: '',
@@ -268,7 +299,11 @@ const Announcements = () => {
                    });
                    setIsModalOpen(true);
                  }}
-                 className="flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                 className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${
+                   hasAllocatedTeam || (activeRole !== 'Supervisor' && activeRole !== 'Team Leader')
+                     ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 cursor-pointer'
+                     : 'bg-gray-300 text-gray-400 cursor-not-allowed shadow-none border border-gray-200'
+                 }`}
                >
                  <Plus size={20} />
                  Create New
@@ -276,6 +311,17 @@ const Announcements = () => {
              )}
         </div>
       </div>
+
+      {/* Warning Alert for Unallocated Supervisor / Team Leader */}
+      {!hasAllocatedTeam && (activeRole === 'Supervisor' || activeRole === 'Team Leader') && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3 text-amber-800 shadow-sm">
+          <div className="w-6 h-6 flex items-center justify-center rounded-full bg-amber-200 text-amber-900 font-bold shrink-0 text-sm">!</div>
+          <div className="text-sm leading-relaxed">
+            <span className="font-bold block text-amber-900 mb-0.5">Team Allocation Required</span>
+            You are currently not allocated to any active student teams or projects. You will be able to create, award, and manage announcements once the Head of Department (HOD) or Admin assigns you to a project record in the system.
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       {activeRole !== 'Team Member' && activeRole !== 'Admin' && (

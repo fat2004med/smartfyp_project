@@ -1,6 +1,7 @@
 import Announcement from "../models/Announcement.js";
 import User from "../models/User.js";
 import Notification from "../models/Notification.js";
+import Project from "../models/Project.js";
 
 export const getPublishedAnnouncements = async (req, res) => {
   try {
@@ -66,9 +67,26 @@ export const getAnnouncements = async (req, res) => {
       };
       conditions.push(generalCondition);
 
-      query = { 
+      const baseTargetCondition = { 
         $or: conditions
       };
+
+      // Only show announcements created after the user's registration/account creation, OR announcements authored by user themselves
+      if (req.user.createdAt) {
+        query = {
+          $and: [
+            baseTargetCondition,
+            {
+              $or: [
+                { author: req.user._id },
+                { createdAt: { $gte: req.user.createdAt } }
+              ]
+            }
+          ]
+        };
+      } else {
+        query = baseTargetCondition;
+      }
     }
 
     const announcements = await Announcement.find(query)
@@ -111,6 +129,23 @@ export const createAnnouncement = async (req, res) => {
 
     const finalDepartment = department || (!req.user.role.includes("Admin") ? (req.user.department?._id || req.user.department) : null);
     const activeRole = req.activeRole || (req.user?.role ? req.user.role.split(',')[0].trim() : '');
+
+    // Enforce team allocation for Supervisor and Team Leader
+    if (activeRole === "Supervisor" || activeRole === "Team Leader") {
+      const isAllocated = await Project.findOne({
+        $or: [
+          { supervisor: req.user._id },
+          { teamLeader: req.user._id },
+          { members: req.user._id }
+        ]
+      });
+
+      if (!isAllocated) {
+        return res.status(403).json({
+          message: "Team Allocation Required: You are currently not allocated to any active student teams or projects. You will be able to create, publish, and manage announcements once the Head of Department (HOD) or Admin assigns you to a project record in the system."
+        });
+      }
+    }
 
     // Enforce role hierarchy on backend
     const rolesHierarchy = ['Admin', 'HOD', 'Supervisor', 'Team Leader', 'Team Member'];
@@ -253,9 +288,25 @@ export const getMyAnnouncements = async (req, res) => {
       };
       conditions.push(generalCondition);
 
-      query = {
+      const baseTargetCondition = {
         $or: conditions
       };
+
+      if (req.user.createdAt) {
+        query = {
+          $and: [
+            baseTargetCondition,
+            {
+              $or: [
+                { author: req.user._id },
+                { createdAt: { $gte: req.user.createdAt } }
+              ]
+            }
+          ]
+        };
+      } else {
+        query = baseTargetCondition;
+      }
     }
     
     const announcements = await Announcement.find(query).populate("author", "name role").sort({ createdAt: -1 });

@@ -35,11 +35,33 @@ const AnnouncementFeed = () => {
   const fetchAnnouncements = async () => {
     try {
       const { data } = await axios.get('/api/announcements');
+      let list = [];
       if (Array.isArray(data)) {
-        setAnnouncements(data.slice(0, 5)); // Just the top 5
+        list = data;
       } else if (data.assigned) {
-        setAnnouncements(data.assigned.slice(0, 5));
+        list = data.assigned;
       }
+
+      const filtered = list.filter(a => {
+        if (activeRole && a.targetRoles && !a.targetRoles.includes(activeRole)) {
+          return false;
+        }
+        const authorId = (a.author?._id || a.author)?.toString();
+        const cRole = a.createdAsRole || a.publisherRole || a.authorRole;
+        if (authorId === user?._id?.toString() && cRole === activeRole) {
+          return false;
+        }
+        if (user?.createdAt && a.createdAt && user.role !== 'Admin') {
+          const userCreatedTime = new Date(user.createdAt).getTime();
+          const annCreatedTime = new Date(a.createdAt).getTime();
+          if (authorId !== user?._id?.toString() && annCreatedTime < userCreatedTime) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      setAnnouncements(filtered.slice(0, 5));
     } catch (error) {
       console.error('Error fetching announcement feed:', error);
     } finally {

@@ -503,10 +503,10 @@ const SupervisorDashboard = () => {
 
   const groupProgress = statsData?.groupProgress || [];
   const monthlyTrend = statsData?.monthlyTrend || [
-    { month: 'Week 1', activity: 40 },
-    { month: 'Week 2', activity: 65 },
-    { month: 'Week 3', activity: 55 },
-    { month: 'Week 4', activity: 90 },
+    { month: 'Week 1', activity: 0 },
+    { month: 'Week 2', activity: 0 },
+    { month: 'Week 3', activity: 0 },
+    { month: 'Week 4', activity: 0 },
   ];
 
   const totalTasks = statsData?.totalTasks ?? 0;

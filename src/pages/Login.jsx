@@ -154,7 +154,19 @@ const Login = () => {
                   <AlertCircle size={20} className={error.includes('mismatch') ? 'text-amber-500' : 'text-red-500'} />
                 </div>
                 <div className="flex-1 pr-6 leading-snug">
-                  {error}
+                  <div>{error}</div>
+                  {(error.toLowerCase().includes('password') || error.toLowerCase().includes('forgot')) && (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => navigate('/forgot-password')}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-900 underline bg-white/70 hover:bg-white px-2.5 py-1 rounded-lg transition-all shadow-xs"
+                      >
+                        <span>Reset Your Password</span>
+                        <ChevronRight size={13} />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <button 
                   type="button" 

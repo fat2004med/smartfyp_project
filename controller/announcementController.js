@@ -72,14 +72,15 @@ export const getAnnouncements = async (req, res) => {
       };
 
       // Only show announcements created after the user's registration/account creation, OR announcements authored by user themselves
-      if (req.user.createdAt) {
+      const cutoffDate = req.user.firstLoginAt || req.user.createdAt;
+      if (cutoffDate) {
         query = {
           $and: [
             baseTargetCondition,
             {
               $or: [
                 { author: req.user._id },
-                { createdAt: { $gte: req.user.createdAt } }
+                { createdAt: { $gte: cutoffDate } }
               ]
             }
           ]
@@ -94,7 +95,20 @@ export const getAnnouncements = async (req, res) => {
       .populate("department", "name")
       .sort({ createdAt: -1 });
 
-    res.json(announcements);
+    let result = announcements;
+    if (req.user && !userRoles.includes("Admin")) {
+      const userCutoffTime = new Date(req.user.firstLoginAt || req.user.createdAt).getTime();
+      if (userCutoffTime) {
+        result = announcements.filter(a => {
+          const authorId = (a.author?._id || a.author)?.toString();
+          if (authorId === req.user._id.toString()) return true;
+          const annTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          return annTime >= userCutoffTime;
+        });
+      }
+    }
+
+    res.json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -292,14 +306,15 @@ export const getMyAnnouncements = async (req, res) => {
         $or: conditions
       };
 
-      if (req.user.createdAt) {
+      const cutoffDate = req.user.firstLoginAt || req.user.createdAt;
+      if (cutoffDate) {
         query = {
           $and: [
             baseTargetCondition,
             {
               $or: [
                 { author: req.user._id },
-                { createdAt: { $gte: req.user.createdAt } }
+                { createdAt: { $gte: cutoffDate } }
               ]
             }
           ]
@@ -311,7 +326,20 @@ export const getMyAnnouncements = async (req, res) => {
     
     const announcements = await Announcement.find(query).populate("author", "name role").sort({ createdAt: -1 });
     
-    res.json(announcements);
+    let result = announcements;
+    if (req.user && !userRoles.includes("Admin")) {
+      const userCutoffTime = new Date(req.user.firstLoginAt || req.user.createdAt).getTime();
+      if (userCutoffTime) {
+        result = announcements.filter(a => {
+          const authorId = (a.author?._id || a.author)?.toString();
+          if (authorId === req.user._id.toString()) return true;
+          const annTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          return annTime >= userCutoffTime;
+        });
+      }
+    }
+
+    res.json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -13,16 +13,52 @@ const generateToken = (id) => {
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
+  const cleanEmail = email ? email.trim().toLowerCase() : "";
+  const rawPassword = password !== undefined && password !== null ? String(password) : "";
+
+  if (!cleanEmail || !rawPassword) {
+    return res.status(400).json({ message: "Please provide both email address and password." });
+  }
 
   try {
-    const user = await User.findOne({ email }).populate("department");
+    let user = await User.findOne({ email: cleanEmail }).populate("department");
+    if (!user) {
+      // Fallback case-insensitive regex search
+      const escaped = cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      user = await User.findOne({ email: new RegExp(`^${escaped}$`, 'i') }).populate("department");
+    }
 
-    if (user && (await user.matchPassword(password))) {
+    if (!user) {
+      await logEvent({
+        level: "Warning",
+        event: "Failed Login Attempt",
+        user: cleanEmail || "unknown@user.com",
+        details: `No account found for email: ${cleanEmail}`,
+        ip: req.ip || req.headers["x-forwarded-for"] || "Internal",
+      });
+
+      return res.status(401).json({ 
+        message: "No account found with this email address. Please check your email or contact your administrator." 
+      });
+    }
+
+    let isPasswordCorrect = await user.matchPassword(rawPassword);
+    if (!isPasswordCorrect && rawPassword.trim() !== rawPassword) {
+      // Check trimmed password in case accidental whitespace was pasted
+      isPasswordCorrect = await user.matchPassword(rawPassword.trim());
+    }
+
+    if (isPasswordCorrect) {
       // Automatic upgrade of HOD role to "HOD, Supervisor" on login
       if (user.role === "HOD") {
         user.role = "HOD, Supervisor";
-        await user.save();
       }
+
+      // Record first login timestamp
+      if (!user.firstLoginAt) {
+        user.firstLoginAt = new Date();
+      }
+      await user.save();
 
       if (user.isActive === false) {
         await logEvent({
@@ -43,25 +79,29 @@ export const login = async (req, res) => {
         ip: req.ip || req.headers["x-forwarded-for"] || "Internal",
       });
 
-      res.json({
+      return res.json({
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
         department: user.department,
         isFirstLogin: user.isFirstLogin,
+        firstLoginAt: user.firstLoginAt,
+        createdAt: user.createdAt,
         token: generateToken(user._id),
       });
     } else {
       await logEvent({
         level: "Warning",
         event: "Failed Login Attempt",
-        user: email || "unknown@user.com",
-        details: "Invalid password attempt for account",
+        user: user.email,
+        details: `Invalid password attempt for account (${user.email})`,
         ip: req.ip || req.headers["x-forwarded-for"] || "Internal",
       });
 
-      res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ 
+        message: "Incorrect password for this account. If you received a temporary password or forgot your password, please use the 'Forgot Password' link to reset it." 
+      });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });

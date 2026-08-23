@@ -51,10 +51,11 @@ const AnnouncementFeed = () => {
         if (authorId === user?._id?.toString() && cRole === activeRole) {
           return false;
         }
-        if (user?.createdAt && a.createdAt && user.role !== 'Admin') {
-          const userCreatedTime = new Date(user.createdAt).getTime();
+        const userRegistrationTimestamp = user?.firstLoginAt || user?.createdAt;
+        const userCutoffTime = userRegistrationTimestamp ? new Date(userRegistrationTimestamp).getTime() : null;
+        if (userCutoffTime && a.createdAt && user?.role !== 'Admin') {
           const annCreatedTime = new Date(a.createdAt).getTime();
-          if (authorId !== user?._id?.toString() && annCreatedTime < userCreatedTime) {
+          if (authorId !== user?._id?.toString() && annCreatedTime < userCutoffTime) {
             return false;
           }
         }

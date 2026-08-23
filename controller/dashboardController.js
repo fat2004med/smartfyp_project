@@ -367,14 +367,28 @@ export const getHODStats = async (req, res) => {
     );
 
     // Fetch up to 5 recent assignments created by this HOD or targeted to HOD
-    const recentAssignmentsList = await Assignment.find({
+    const assignmentQuery = {
       $or: [
         { creator: req.user._id },
         { createdBy: req.user._id },
         { targetRoles: 'HOD' },
         { targetRole: 'HOD' }
       ]
-    })
+    };
+
+    if (req.user.createdAt) {
+      assignmentQuery.$and = [
+        {
+          $or: [
+            { creator: req.user._id },
+            { createdBy: req.user._id },
+            { createdAt: { $gte: req.user.createdAt } }
+          ]
+        }
+      ];
+    }
+
+    const recentAssignmentsList = await Assignment.find(assignmentQuery)
       .sort({ createdAt: -1 })
       .limit(5);
 
@@ -527,11 +541,12 @@ export const getSupervisorStats = async (req, res) => {
     const w2Count = await Submission.countDocuments({ project: { $in: projectIds }, createdAt: { $gte: threeWeeksAgo, $lt: twoWeeksAgo } });
     const w1Count = await Submission.countDocuments({ project: { $in: projectIds }, createdAt: { $lt: threeWeeksAgo } });
 
+    const hasAssignedProjects = projectIds.length > 0;
     const monthlyTrend = [
-      { month: 'Week 1', activity: 20 + w1Count * 15 },
-      { month: 'Week 2', activity: 40 + w2Count * 15 },
-      { month: 'Week 3', activity: 30 + w3Count * 15 },
-      { month: 'Week 4', activity: 50 + w4Count * 25 },
+      { month: 'Week 1', activity: hasAssignedProjects ? w1Count * 25 : 0 },
+      { month: 'Week 2', activity: hasAssignedProjects ? w2Count * 25 : 0 },
+      { month: 'Week 3', activity: hasAssignedProjects ? w3Count * 25 : 0 },
+      { month: 'Week 4', activity: hasAssignedProjects ? w4Count * 25 : 0 },
     ];
 
     // Real-time task, student and completed project counters for supervisor

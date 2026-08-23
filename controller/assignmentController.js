@@ -49,6 +49,15 @@ export const isUserScheduledForAssignment = async (assignment, user, userProject
     return false;
   }
 
+  // Only show assignments created at or after the user's registration date for non-Admin users
+  if (user?.createdAt && assignment.createdAt && user.role !== 'Admin') {
+    const userCreatedTime = new Date(user.createdAt).getTime();
+    const assignmentCreatedTime = new Date(assignment.createdAt).getTime();
+    if (assignmentCreatedTime < userCreatedTime) {
+      return false;
+    }
+  }
+
   const creatorRole = assignment.publisherRole || assignment.createdAsRole || assignment.creatorRole || (assignment.creator?.role ? assignment.creator.role.split(',')[0].trim() : 'Admin');
   const creatorIdString = creatorId;
 
@@ -135,6 +144,10 @@ export const getAssignedToMeAssignments = async (req, res) => {
       ]
     };
 
+    if (req.user && !req.user.role?.includes('Admin') && req.user.createdAt) {
+      query.createdAt = { $gte: req.user.createdAt };
+    }
+
     const assignments = await Assignment.find(query)
       .populate("creator", "name role department")
       .populate("createdBy", "name role department")
@@ -173,7 +186,18 @@ export const getAssignments = async (req, res) => {
     const userId = req.user._id;
     const userRole = req.activeRole || (req.user?.role ? req.user.role.split(',')[0].trim() : '');
 
-    const allAssignments = await Assignment.find({})
+    let assignQuery = {};
+    if (req.user && !req.user.role?.includes('Admin') && req.user.createdAt) {
+      assignQuery = {
+        $or: [
+          { creator: userId },
+          { createdBy: userId },
+          { createdAt: { $gte: req.user.createdAt } }
+        ]
+      };
+    }
+
+    const allAssignments = await Assignment.find(assignQuery)
       .populate("creator", "name role department")
       .populate("createdBy", "name role department")
       .populate("submissions.student", "name email role department")

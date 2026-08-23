@@ -6,6 +6,10 @@ export const getNotifications = async (req, res) => {
     const activeRole = req.activeRole || userRoles[0] || "";
     const query = { recipient: req.user._id };
     
+    if (req.user && req.user.role !== "Admin" && req.user.createdAt) {
+      query.createdAt = { $gte: req.user.createdAt };
+    }
+
     if (activeRole && activeRole !== "Admin") {
       query.$or = [
         { targetRole: activeRole },
@@ -72,6 +76,10 @@ export const getUnreadCount = async (req, res) => {
     const activeRole = req.activeRole || userRoles[0] || "";
     const query = { recipient: req.user._id, isRead: false };
     
+    if (req.user && req.user.role !== "Admin" && req.user.createdAt) {
+      query.createdAt = { $gte: req.user.createdAt };
+    }
+
     if (activeRole && activeRole !== "Admin") {
       query.$or = [
         { targetRole: activeRole },

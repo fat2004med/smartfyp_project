@@ -120,6 +120,15 @@ const Assignments = () => {
           return false;
         }
 
+        // Only show assignments created at or after the user's registration for non-Admin roles
+        if (user?.createdAt && a.createdAt && user.role !== 'Admin') {
+          const userCreatedTime = new Date(user.createdAt).getTime();
+          const assignmentCreatedTime = new Date(a.createdAt).getTime();
+          if (creatorId !== currentUserId && assignmentCreatedTime < userCreatedTime) {
+            return false;
+          }
+        }
+
         const matchesTarget = (a.targetRoles && a.targetRoles.includes(activeRole)) || 
                               a.targetRole === activeRole || 
                               (a.assignedTo && a.assignedTo.some(id => (id?._id || id)?.toString() === currentUserId));

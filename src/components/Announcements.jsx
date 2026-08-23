@@ -81,31 +81,33 @@ const Announcements = () => {
       const data = allRes.data || [];
       const publishedData = pubRes.data || [];
 
-      // Published By Me: authored in activeRole capacity
+      // Published By Me: authored by the user in activeRole capacity
       const createdList = (publishedData.length > 0 ? publishedData : data).filter(a => {
         const authorId = (a.author?._id || a.author)?.toString();
-        if (authorId !== user._id?.toString()) return false;
+        if (authorId !== user?._id?.toString()) return false;
         const cRole = a.createdAsRole || a.publisherRole || a.authorRole;
         if (cRole) return cRole === activeRole;
         return true;
       });
 
       // Announcements for Me: targeted to activeRole (and not created by self in same activeRole capacity)
+      const userRegistrationTimestamp = user?.firstLoginAt || user?.createdAt;
+      const userCutoffTime = userRegistrationTimestamp ? new Date(userRegistrationTimestamp).getTime() : null;
+
       const assignedList = data.filter(a => {
-        const matchesTarget = a.targetRoles?.includes(activeRole);
+        const matchesTarget = a.targetRoles?.includes(activeRole) || !a.targetRoles || a.targetRoles.length === 0;
         if (!matchesTarget) return false;
 
         const authorId = (a.author?._id || a.author)?.toString();
         const cRole = a.createdAsRole || a.publisherRole || a.authorRole;
-        if (authorId === user._id?.toString() && cRole === activeRole) {
+        if (authorId === user?._id?.toString() && cRole === activeRole) {
           return false;
         }
 
-        // Only show announcements created after the user's registration for non-Admin roles
-        if (user?.createdAt && a.createdAt && user.role !== 'Admin') {
-          const userCreatedTime = new Date(user.createdAt).getTime();
+        // Only show announcements created after the user's registration/first login for non-Admin roles
+        if (userCutoffTime && a.createdAt && user?.role !== 'Admin') {
           const annCreatedTime = new Date(a.createdAt).getTime();
-          if (authorId !== user._id?.toString() && annCreatedTime < userCreatedTime) {
+          if (authorId !== user?._id?.toString() && annCreatedTime < userCutoffTime) {
             return false;
           }
         }
@@ -119,7 +121,7 @@ const Announcements = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?._id, user?.createdAt, user?.role, activeRole]);
+  }, [user?._id, user?.createdAt, user?.firstLoginAt, user?.role, activeRole]);
 
   useEffect(() => {
     const load = async () => {

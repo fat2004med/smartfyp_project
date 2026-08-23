@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, default: "" },
     interests: [{ type: String }],
     isFirstLogin: { type: Boolean, default: true },
+    firstLoginAt: { type: Date },
     tempPasswordExpires: { type: Date },
     isActive: { type: Boolean, default: true },
   },

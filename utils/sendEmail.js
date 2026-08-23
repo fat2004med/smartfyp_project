@@ -1,4 +1,36 @@
 import nodemailer from "nodemailer";
+import dns from "node:dns";
+
+// Force IPv4 resolution order across Node.js to prevent ENETUNREACH on IPv6-restricted cloud environments (Railway, Docker, VPCs)
+if (dns.setDefaultResultOrder) {
+  try {
+    dns.setDefaultResultOrder("ipv4first");
+  } catch (e) {
+    // Ignore if not supported in runtime
+  }
+}
+
+/**
+ * Strict IPv4 DNS lookup helper for Nodemailer socket transports
+ */
+const ipv4Lookup = (hostname, options, callback) => {
+  let cb = callback;
+  let opts = { family: 4, all: false };
+
+  if (typeof options === "function") {
+    cb = options;
+  } else if (typeof options === "object" && options !== null) {
+    opts = { ...options, family: 4, all: false };
+  } else if (typeof options === "number") {
+    opts = { family: 4, all: false };
+  }
+
+  return dns.lookup(hostname, opts, (err, address, family) => {
+    if (typeof cb === "function") {
+      cb(err, address, family);
+    }
+  });
+};
 
 /**
  * Clean & normalize environment variable string values
@@ -114,19 +146,21 @@ export const getEmailConfig = () => {
 };
 
 /**
- * Create a resilient nodemailer transporter with appropriate timeouts and TLS options
+ * Create a resilient nodemailer transporter with strict IPv4 resolution and timeouts
  */
 const createTransporter = (config, strategy = "primary") => {
   const { user, pass, host, port, service, secure } = config;
 
-  const connectionTimeout = 5000;
-  const greetingTimeout = 5000;
-  const socketTimeout = 7000;
+  const connectionTimeout = 7000;
+  const greetingTimeout = 7000;
+  const socketTimeout = 10000;
 
   if (strategy === "gmail-service" || (service === "gmail" && !host)) {
     return nodemailer.createTransport({
       service: "gmail",
       auth: { user, pass },
+      family: 4,
+      lookup: ipv4Lookup,
       tls: {
         rejectUnauthorized: false,
       },
@@ -142,6 +176,8 @@ const createTransporter = (config, strategy = "primary") => {
       port: 587,
       secure: false, // STARTTLS
       requireTLS: true,
+      family: 4,
+      lookup: ipv4Lookup,
       auth: { user, pass },
       tls: {
         rejectUnauthorized: false,
@@ -157,6 +193,8 @@ const createTransporter = (config, strategy = "primary") => {
       host: "smtp.gmail.com",
       port: 465,
       secure: true,
+      family: 4,
+      lookup: ipv4Lookup,
       auth: { user, pass },
       tls: {
         rejectUnauthorized: false,
@@ -172,6 +210,8 @@ const createTransporter = (config, strategy = "primary") => {
     host: host || "smtp.gmail.com",
     port: port || (secure ? 465 : 587),
     secure: secure,
+    family: 4,
+    lookup: ipv4Lookup,
     auth: { user, pass },
     tls: {
       rejectUnauthorized: false,

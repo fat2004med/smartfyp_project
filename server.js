@@ -1,3 +1,12 @@
+import dns from "node:dns";
+if (dns.setDefaultResultOrder) {
+  try {
+    dns.setDefaultResultOrder("ipv4first");
+  } catch (e) {
+    // Ignore if not supported
+  }
+}
+
 // Add this at the very top of server.js
 console.log('🚀 Server starting...');
 console.log('📝 NODE_ENV:', process.env.NODE_ENV);

@@ -23,7 +23,10 @@ import {
   KeyRound,
   RefreshCw,
   Copy,
-  Check
+  Check,
+  Send,
+  AlertCircle,
+  ExternalLink
 } from 'lucide-react';
 
 const UserManagement = () => {
@@ -46,6 +49,10 @@ const UserManagement = () => {
   const [requireChangeOnLogin, setRequireChangeOnLogin] = useState(true);
   const [resetSuccessData, setResetSuccessData] = useState(null);
   const [copiedPass, setCopiedPass] = useState(false);
+
+  // Created User / Welcome Credentials Modal State
+  const [createdUserResult, setCreatedUserResult] = useState(null);
+  const [copiedCredentials, setCopiedCredentials] = useState(false);
 
   const [newUser, setNewUser] = useState({
     name: '',
@@ -168,10 +175,11 @@ const UserManagement = () => {
       } else {
         const { data } = await api.post('/api/users', payload);
         setUsers([...users, data]);
+        setCreatedUserResult(data);
         if (data.emailSent) {
           toast.success(`User created! Welcome email dispatched to ${data.email}`);
         } else {
-          toast.success(data.message || 'User created successfully!');
+          toast.success(data.message || `User created with temporary password: ${data.temporaryPassword}`);
         }
       }
       setIsModalOpen(false);
@@ -181,6 +189,31 @@ const UserManagement = () => {
        // Handled by interceptor or standard response error
        const msg = error.response?.data?.message || 'Error saving user';
        toast.error(msg);
+    } finally {
+      setSubmittingId(null);
+    }
+  };
+
+  const handleResendWelcome = async (user) => {
+    setSubmittingId(`resend-${user._id}`);
+    try {
+      const { data } = await api.post(`/api/users/${user._id}/resend-welcome`, {
+        origin: window.location.origin
+      });
+      if (data.emailSent) {
+        toast.success(`Welcome email sent to ${user.email}!`);
+      } else {
+        toast.error(`Email delivery note: ${data.emailError || 'Could not dispatch email'}`);
+      }
+      setCreatedUserResult({
+        ...data,
+        name: user.name,
+        role: user.role,
+        department: user.department?.name || user.department
+      });
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to resend welcome email');
     } finally {
       setSubmittingId(null);
     }
@@ -439,6 +472,19 @@ const UserManagement = () => {
                           id={`reset-pwd-user-${user._id}`}
                         >
                           <KeyRound size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleResendWelcome(user)}
+                          disabled={submittingId === `resend-${user._id}`}
+                          className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all hover:scale-105 active:scale-95 shadow-sm border border-indigo-100 disabled:opacity-50"
+                          title="Send / Resend Welcome Email with Credentials"
+                          id={`resend-welcome-user-${user._id}`}
+                        >
+                          {submittingId === `resend-${user._id}` ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Send size={16} />
+                          )}
                         </button>
                         <button 
                           onClick={() => handleToggleStatus(user._id)}
@@ -968,6 +1014,131 @@ const UserManagement = () => {
                   </button>
                 </div>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* User Created / Credentials Result Modal */}
+      <AnimatePresence>
+        {createdUserResult && (
+          <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setCreatedUserResult(null); setCopiedCredentials(false); }}
+              className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-gray-100 p-6 space-y-5 z-10"
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                    <CheckCircle2 size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">User Account & Credentials</h3>
+                    <p className="text-xs text-gray-500 font-medium">Account status and login credentials</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setCreatedUserResult(null); setCopiedCredentials(false); }}
+                  className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Delivery Status Banner */}
+              {createdUserResult.emailSent ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3">
+                  <CheckCircle2 size={20} className="text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-bold text-emerald-900">Welcome Email Dispatched!</p>
+                    <p className="text-emerald-700 text-xs mt-0.5">
+                      An official welcome email with login credentials has been sent to <strong>{createdUserResult.email}</strong>.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                  <AlertCircle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-bold text-amber-900">Account Ready (Email Delivery Alert)</p>
+                    <p className="text-amber-700 text-xs mt-0.5">
+                      {createdUserResult.emailError || "The welcome email could not be delivered automatically to this inbox. You can copy the credentials below and provide them to the user directly."}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Credentials Card */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                <div className="flex justify-between items-center text-xs text-slate-500 font-semibold uppercase tracking-wider">
+                  <span>User Login Details</span>
+                  <span className="text-blue-600 lowercase font-bold">{createdUserResult.role}</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  {createdUserResult.name && (
+                    <>
+                      <span className="text-slate-500 font-medium col-span-1">Name:</span>
+                      <span className="font-bold text-slate-900 col-span-2">{createdUserResult.name}</span>
+                    </>
+                  )}
+
+                  <span className="text-slate-500 font-medium col-span-1">Email:</span>
+                  <span className="font-bold text-slate-900 col-span-2 break-all">{createdUserResult.email}</span>
+
+                  <span className="text-slate-500 font-medium col-span-1">Temporary Pass:</span>
+                  <span className="col-span-2">
+                    <code className="bg-white border border-slate-200 text-blue-600 px-2.5 py-0.5 rounded font-mono font-bold text-sm">
+                      {createdUserResult.temporaryPassword || createdUserResult.tempPasswordUsed}
+                    </code>
+                  </span>
+
+                  <span className="text-slate-500 font-medium col-span-1">Portal URL:</span>
+                  <span className="text-slate-700 text-xs col-span-2 break-all font-mono">
+                    {createdUserResult.portalUrl || `${window.location.origin}/login`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pass = createdUserResult.temporaryPassword || createdUserResult.tempPasswordUsed;
+                    const url = createdUserResult.portalUrl || `${window.location.origin}/login`;
+                    const text = `SmartFYP Academic Portal Credentials:\nName: ${createdUserResult.name || 'User'}\nEmail: ${createdUserResult.email}\nTemporary Password: ${pass}\nRole: ${createdUserResult.role || 'User'}\nPortal URL: ${url}\n\nPlease reset your password upon first login.`;
+                    navigator.clipboard.writeText(text);
+                    setCopiedCredentials(true);
+                    toast.success("Credentials copied to clipboard!");
+                    setTimeout(() => setCopiedCredentials(false), 3000);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition-all border border-slate-200"
+                >
+                  {copiedCredentials ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
+                  {copiedCredentials ? "Copied Credentials!" : "Copy Credentials"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreatedUserResult(null);
+                    setCopiedCredentials(false);
+                  }}
+                  className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all shadow-md"
+                >
+                  Done
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

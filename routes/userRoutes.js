@@ -1,5 +1,16 @@
 import express from "express";
-import { createUser, getUsers, getUserById, updateUser, deleteUser, toggleUserStatus, updateProfile, getSupervisors, resetUserPassword } from "../controller/userController.js";
+import { 
+  createUser, 
+  getUsers, 
+  getUserById, 
+  updateUser, 
+  deleteUser, 
+  toggleUserStatus, 
+  updateProfile, 
+  getSupervisors, 
+  resetUserPassword,
+  resendWelcomeEmail 
+} from "../controller/userController.js";
 import { protect, authorize } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -13,6 +24,7 @@ router.get("/:id", protect, authorize("Admin", "HOD"), getUserById);
 router.put("/:id", protect, authorize("Admin", "HOD"), updateUser);
 router.put("/:id/toggle-status", protect, authorize("Admin", "HOD"), toggleUserStatus);
 router.post("/:id/reset-password", protect, authorize("Admin", "HOD"), resetUserPassword);
+router.post("/:id/resend-welcome", protect, authorize("Admin", "HOD"), resendWelcomeEmail);
 router.delete("/:id", protect, authorize("Admin", "HOD"), deleteUser);
 
 export default router;

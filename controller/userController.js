@@ -42,106 +42,7 @@ export const getUserById = async (req, res) => {
   }
 };
 
-export const createUser = async (req, res) => {
-  const { name, email, password, role, department, interests, studentRegNo, designation, phone } = req.body;
-  try {
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      const existingRoles = userExists.role ? userExists.role.split(",").map(r => r.trim()) : [];
-      const isHOD = existingRoles.includes("HOD");
-      const isSupervisor = existingRoles.includes("Supervisor");
-      
-      if ((isHOD && role === "Supervisor") || (isSupervisor && role === "HOD")) {
-        if (!isHOD || !isSupervisor) {
-          userExists.role = "HOD, Supervisor";
-          if (department) {
-            userExists.department = department;
-          }
-          if (designation) {
-            userExists.designation = designation;
-          }
-          if (phone) {
-            userExists.phone = phone;
-          }
-          await userExists.save();
-          return res.status(201).json({
-            _id: userExists._id,
-            name: userExists.name,
-            email: userExists.email,
-            role: userExists.role,
-            department: userExists.department,
-            isFirstLogin: userExists.isFirstLogin,
-            tempPasswordUsed: "Password remains unchanged"
-          });
-        } else {
-          return res.status(400).json({ message: "User already exists with both HOD and Supervisor roles." });
-        }
-      }
-      return res.status(400).json({ message: "User already exists" });
-    }
-
-    // Role permissions check for HOD
-    const isHOD = req.user && req.user.role && req.user.role.includes("HOD");
-    if (isHOD) {
-      if (role === "Admin" || role === "HOD") {
-        return res.status(403).json({ message: "You cannot create users with HOD or Admin roles." });
-      }
-    }
-
-    // Set department automatically for HOD
-    const finalDepartment = isHOD ? (req.user.department?._id || req.user.department) : department;
-
-    // Generate/get temporary password
-    let temporaryPassword = password;
-    if (password) {
-      const pwdErrors = validatePassword(password);
-      if (pwdErrors.length > 0) {
-        return res.status(400).json({ 
-          message: `Provided password does not meet requirements. It must contain: ${pwdErrors.join(", ")}.` 
-        });
-      }
-    } else {
-      temporaryPassword = generateCompliantPassword();
-    }
-
-    const user = await User.create({
-      name,
-      email,
-      password: temporaryPassword,
-      role,
-      department: finalDepartment,
-      interests,
-      studentRegNo,
-      designation,
-      phone: phone || "",
-      isFirstLogin: true // Force password reset on login
-    });
-
-    if (user) {
-      // If user is HOD, also automatically assign as the HOD of the department
-      if (role === "HOD" && finalDepartment) {
-        const dept = await Department.findById(finalDepartment);
-        if (dept) {
-          dept.hod = user._id;
-          await dept.save();
-        }
-      }
-
-      // Send greeting email with temp credentials
-      const portalUrl = getPortalBaseUrl(req, req.body.origin);
-      const loginUrl = `${portalUrl}/login`;
-      let emailSent = false;
-      let emailError = null;
-
-      await logEvent({
-        level: "Info",
-        event: "User Created",
-        user: req.user?.email || "Admin",
-        details: `Created user ${user.name} (${user.email}) with role ${user.role}`,
-        ip: req.ip
-      });
-      
-      const htmlContent = `<!DOCTYPE html>
+const buildWelcomeEmailHtml = ({ name, email, role, temporaryPassword, loginUrl }) => `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -209,40 +110,6 @@ export const createUser = async (req, res) => {
       word-wrap: break-word;
       word-break: break-word;
     }
-    .credentials-card td {
-      word-wrap: break-word;
-      word-break: break-word;
-    }
-    @media only screen and (max-width: 600px) {
-      .credentials-card table, 
-      .credentials-card tbody, 
-      .credentials-card tr, 
-      .credentials-card td {
-        display: block !important;
-        width: 100% !important;
-      }
-      .credentials-card td {
-        box-sizing: border-box !important;
-      }
-      .credentials-card td:first-child {
-        font-weight: 600 !important;
-        color: #64748b !important;
-        font-size: 11px !important;
-        padding-bottom: 2px !important;
-        padding-top: 8px !important;
-        text-transform: uppercase !important;
-      }
-      .credentials-card td:last-child {
-        font-size: 14px !important;
-        padding-top: 2px !important;
-        padding-bottom: 8px !important;
-        border-bottom: 1px dashed #cbd5e1;
-      }
-      .credentials-card tr:last-child td:last-child {
-        border-bottom: none !important;
-        padding-bottom: 2px !important;
-      }
-    }
     .instructions {
       font-size: 14px;
       color: #475569;
@@ -275,9 +142,6 @@ export const createUser = async (req, res) => {
       color: #94a3b8;
       border-top: 1px solid #f1f5f9;
     }
-    .footer p {
-      margin: 4px 0;
-    }
   </style>
 </head>
 <body>
@@ -287,22 +151,22 @@ export const createUser = async (req, res) => {
         <h1>SmartFYP Academic Portal</h1>
       </div>
       <div class="content">
-        <p class="greeting">Dear ${user.name},</p>
+        <p class="greeting">Dear ${name},</p>
         <p class="intro">Your account has been successfully created on the <strong>SmartFYP Academic Portal</strong>. Below are your temporary login details generated by the administrator:</p>
         
         <div class="credentials-card">
           <table style="width:100%; border-collapse:collapse;">
             <tr>
               <td style="padding: 6px 0; font-weight: 600; color: #64748b; font-size: 13px; text-transform: uppercase; width:150px;">Email Address</td>
-              <td style="padding: 6px 0; font-weight: 700; color: #0f172a; font-size: 15px; word-break: break-all;">${user.email}</td>
+              <td style="padding: 6px 0; font-weight: 700; color: #0f172a; font-size: 15px; word-break: break-all;">${email}</td>
             </tr>
             <tr>
-              <td style="padding: 6px 0; font-weight: 600; color: #64748b; font-size: 13px; text-transform: uppercase;">Temporary Pass</td>
+              <td style="padding: 6px 0; font-weight: 600; color: #64748b; font-size: 13px; text-transform: uppercase;">Temporary Password</td>
               <td style="padding: 6px 0; font-weight: 700; color: #2563eb; font-size: 15px;"><code style="background-color:#e2e8f0; padding:2px 8px; border-radius:4px; font-family:monospace;">${temporaryPassword}</code></td>
             </tr>
             <tr>
               <td style="padding: 6px 0; font-weight: 600; color: #64748b; font-size: 13px; text-transform: uppercase;">Assigned Role</td>
-              <td style="padding: 6px 0; font-weight: 800; color: #2563eb; font-size: 15px;">${user.role}</td>
+              <td style="padding: 6px 0; font-weight: 800; color: #2563eb; font-size: 15px;">${role}</td>
             </tr>
           </table>
         </div>
@@ -311,7 +175,7 @@ export const createUser = async (req, res) => {
           <strong style="color: #1e3a8a; font-size: 15px;">Next Steps:</strong>
           <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
             <li style="margin-bottom: 6px;">Click the button below to access the academic portal.</li>
-            <li style="margin-bottom: 6px;">When prompted, use these credentials to log in, selecting <strong>"${user.role}"</strong> as your role.</li>
+            <li style="margin-bottom: 6px;">When prompted, use these credentials to log in, selecting <strong>"${role}"</strong> as your role.</li>
             <li>For security reasons, you will be required to change your password immediately upon your first login.</li>
           </ul>
         </div>
@@ -320,7 +184,7 @@ export const createUser = async (req, res) => {
           <a href="${loginUrl}" class="cta-button" target="_blank" style="color: #ffffff; text-decoration: none;">Sign In To SmartFYP</a>
         </div>
 
-        <p class="intro" style="margin-top: 28px; margin-bottom: 0;">If you have any questions or require assistance, please get in touch with your department Head of Department (HOD) or Admin.<br><br>Best Regards,<br><strong>SmartFYP Team</strong></p>
+        <p class="intro" style="margin-top: 28px; margin-bottom: 0;">If you have any questions or require assistance, please get in touch with your department coordinator or Administrator.<br><br>Best Regards,<br><strong>SmartFYP Team</strong></p>
       </div>
       <div class="footer">
         <p>© 2026 SmartFYP Portal. All rights reserved.</p>
@@ -331,39 +195,223 @@ export const createUser = async (req, res) => {
 </body>
 </html>`;
 
-        try {
-          await sendEmail({
-            email: user.email,
-            subject: "Welcome to SmartFYP Academic Portal",
-            message: `Dear ${user.name},\n\nYour account has been created on the SmartFYP Portal.\n\nCredentials:\nPortal Link: ${loginUrl}\nEmail: ${user.email}\nTemporary Password: ${temporaryPassword}\nRole: ${user.role}\n\nPlease reset your password upon your first login.\n\nBest Regards,\nSmartFYP Team`,
-            html: htmlContent
-          });
-          emailSent = true;
-          console.log(`[CreateUser] Welcome email successfully dispatched to ${user.email}`);
-        } catch (err) {
-          emailError = err.message;
-          console.warn(`[CreateUser] Welcome email could not be sent to ${user.email}:`, err.message);
-        }
+export const createUser = async (req, res) => {
+  const { name, email, password, role, department, interests, studentRegNo, designation, phone } = req.body;
+  const cleanEmail = email ? email.trim().toLowerCase() : "";
+  const cleanName = name ? name.trim() : "";
 
-        res.status(201).json({
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          department: user.department,
-          isFirstLogin: user.isFirstLogin,
-          tempPasswordUsed: temporaryPassword,
-          temporaryPassword,
-          emailSent,
-          emailError,
-          portalUrl: loginUrl,
-          message: emailSent
-            ? `User ${user.name} created! Welcome email dispatched to ${user.email}.`
-            : `User ${user.name} created! Temporary Password: ${temporaryPassword}`
-        });
-      } else {
-        res.status(400).json({ message: "Invalid user data" });
+  try {
+    const userExists = await User.findOne({ email: cleanEmail });
+    if (userExists) {
+      const existingRoles = userExists.role ? userExists.role.split(",").map(r => r.trim()) : [];
+      const isHOD = existingRoles.includes("HOD");
+      const isSupervisor = existingRoles.includes("Supervisor");
+      
+      if ((isHOD && role === "Supervisor") || (isSupervisor && role === "HOD")) {
+        if (!isHOD || !isSupervisor) {
+          userExists.role = "HOD, Supervisor";
+          if (department) {
+            userExists.department = department;
+          }
+          if (designation) {
+            userExists.designation = designation;
+          }
+          if (phone) {
+            userExists.phone = phone;
+          }
+          await userExists.save();
+          return res.status(201).json({
+            _id: userExists._id,
+            name: userExists.name,
+            email: userExists.email,
+            role: userExists.role,
+            department: userExists.department,
+            isFirstLogin: userExists.isFirstLogin,
+            tempPasswordUsed: "Password remains unchanged"
+          });
+        } else {
+          return res.status(400).json({ message: "User already exists with both HOD and Supervisor roles." });
+        }
       }
+      return res.status(400).json({ message: "User already exists with this email address" });
+    }
+
+    // Role permissions check for HOD
+    const isHOD = req.user && req.user.role && req.user.role.includes("HOD");
+    if (isHOD) {
+      if (role === "Admin" || role === "HOD") {
+        return res.status(403).json({ message: "You cannot create users with HOD or Admin roles." });
+      }
+    }
+
+    // Set department automatically for HOD
+    const finalDepartment = isHOD ? (req.user.department?._id || req.user.department) : department;
+
+    // Generate/get temporary password
+    let temporaryPassword = password;
+    if (password) {
+      const pwdErrors = validatePassword(password);
+      if (pwdErrors.length > 0) {
+        return res.status(400).json({ 
+          message: `Provided password does not meet requirements. It must contain: ${pwdErrors.join(", ")}.` 
+        });
+      }
+    } else {
+      temporaryPassword = generateCompliantPassword();
+    }
+
+    const user = await User.create({
+      name: cleanName,
+      email: cleanEmail,
+      password: temporaryPassword,
+      role,
+      department: finalDepartment,
+      interests,
+      studentRegNo,
+      designation,
+      phone: phone || "",
+      isFirstLogin: true // Force password reset on login
+    });
+
+    if (user) {
+      // If user is HOD, also automatically assign as the HOD of the department
+      if (role === "HOD" && finalDepartment) {
+        const dept = await Department.findById(finalDepartment);
+        if (dept) {
+          dept.hod = user._id;
+          await dept.save();
+        }
+      }
+
+      // Send greeting email with temp credentials
+      const portalUrl = getPortalBaseUrl(req, req.body.origin);
+      const loginUrl = `${portalUrl}/login`;
+      let emailSent = false;
+      let emailError = null;
+
+      await logEvent({
+        level: "Info",
+        event: "User Created",
+        user: req.user?.email || "Admin",
+        details: `Created user ${user.name} (${user.email}) with role ${user.role}`,
+        ip: req.ip
+      });
+      
+      const htmlContent = buildWelcomeEmailHtml({
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        temporaryPassword,
+        loginUrl
+      });
+
+      try {
+        await sendEmail({
+          email: user.email,
+          subject: "Welcome to SmartFYP Academic Portal",
+          message: `Dear ${user.name},\n\nYour account has been created on the SmartFYP Portal.\n\nCredentials:\nPortal Link: ${loginUrl}\nEmail: ${user.email}\nTemporary Password: ${temporaryPassword}\nRole: ${user.role}\n\nPlease reset your password upon your first login.\n\nBest Regards,\nSmartFYP Team`,
+          html: htmlContent
+        });
+        emailSent = true;
+        console.log(`[CreateUser] Welcome email successfully dispatched to ${user.email}`);
+      } catch (err) {
+        emailError = err.message;
+        console.warn(`[CreateUser] Welcome email could not be sent to ${user.email}:`, err.message);
+      }
+
+      res.status(201).json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        isFirstLogin: user.isFirstLogin,
+        tempPasswordUsed: temporaryPassword,
+        temporaryPassword,
+        emailSent,
+        emailError,
+        portalUrl: loginUrl,
+        message: emailSent
+          ? `User ${user.name} created! Welcome email dispatched to ${user.email}.`
+          : `User ${user.name} created! Temporary Password: ${temporaryPassword}`
+      });
+    } else {
+      res.status(400).json({ message: "Invalid user data" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const resendWelcomeEmail = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).populate("department");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isHOD = req.user && req.user.role && req.user.role.includes("HOD");
+    if (isHOD) {
+      const userDeptId = user.department?._id || user.department;
+      const reqDeptId = req.user.department?._id || req.user.department;
+      if (String(userDeptId) !== String(reqDeptId)) {
+        return res.status(403).json({ message: "Access denied to users of other departments." });
+      }
+    }
+
+    let temporaryPassword = req.body.temporaryPassword;
+    if (!temporaryPassword) {
+      temporaryPassword = generateCompliantPassword();
+    }
+    user.password = temporaryPassword;
+    user.isFirstLogin = true;
+    await user.save();
+
+    const portalUrl = getPortalBaseUrl(req, req.body.origin);
+    const loginUrl = `${portalUrl}/login`;
+    let emailSent = false;
+    let emailError = null;
+
+    const htmlContent = buildWelcomeEmailHtml({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      temporaryPassword,
+      loginUrl
+    });
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: "Welcome to SmartFYP Academic Portal - Account Credentials",
+        message: `Dear ${user.name},\n\nYour account credentials for the SmartFYP Portal have been re-issued.\n\nCredentials:\nPortal Link: ${loginUrl}\nEmail: ${user.email}\nTemporary Password: ${temporaryPassword}\nRole: ${user.role}\n\nPlease reset your password upon your first login.\n\nBest Regards,\nSmartFYP Team`,
+        html: htmlContent
+      });
+      emailSent = true;
+      console.log(`[ResendWelcomeEmail] Welcome email successfully sent to ${user.email}`);
+    } catch (mailErr) {
+      emailError = mailErr.message;
+      console.warn(`[ResendWelcomeEmail] Could not send welcome email to ${user.email}:`, mailErr.message);
+    }
+
+    await logEvent({
+      level: "Info",
+      event: "Welcome Email Re-dispatched",
+      user: req.user?.email || "Admin",
+      details: `Welcome email re-sent to ${user.name} (${user.email}). Sent: ${emailSent}`,
+      ip: req.ip
+    });
+
+    res.json({
+      message: emailSent
+        ? `Welcome email successfully sent to ${user.email}!`
+        : `Temporary password updated to "${temporaryPassword}", but email delivery failed: ${emailError}`,
+      email: user.email,
+      temporaryPassword,
+      emailSent,
+      emailError,
+      portalUrl: loginUrl
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

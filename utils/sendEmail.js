@@ -10,10 +10,30 @@ const cleanEnv = (val) => {
 };
 
 /**
+ * Extract clean email address and optional display name from a string like:
+ * 'user@gmail.com' or '"SmartFYP" <user@gmail.com>' or 'SmartFYP <user@gmail.com>'
+ */
+export const parseEmailAddress = (str) => {
+  if (!str || typeof str !== "string") return { email: null, name: null };
+  const trimmed = str.trim();
+  const angleMatch = trimmed.match(/^(?:["']?([^"']*)["']?\s*)?<([^>]+)>$/);
+  if (angleMatch) {
+    const rawName = angleMatch[1] ? angleMatch[1].replace(/["']/g, "").trim() : null;
+    const cleanEmail = angleMatch[2].trim().toLowerCase();
+    return { email: cleanEmail, name: rawName || null };
+  }
+  const emailMatch = trimmed.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+  if (emailMatch) {
+    return { email: emailMatch[1].trim().toLowerCase(), name: null };
+  }
+  return { email: trimmed.toLowerCase(), name: null };
+};
+
+/**
  * Retrieve and sanitize SMTP credentials from any standard environment variable naming convention
  */
 export const getEmailConfig = () => {
-  const user =
+  const rawUser =
     cleanEnv(process.env.EMAIL_USER) ||
     cleanEnv(process.env.EMAIL_USERNAME) ||
     cleanEnv(process.env.MAIL_USER) ||
@@ -22,6 +42,9 @@ export const getEmailConfig = () => {
     cleanEnv(process.env.SMTP_USERNAME) ||
     cleanEnv(process.env.GMAIL_USER) ||
     cleanEnv(process.env.GMAIL_USERNAME);
+
+  const parsedUser = parseEmailAddress(rawUser);
+  const user = parsedUser.email || rawUser;
 
   let rawPass =
     cleanEnv(process.env.EMAIL_PASS) ||
@@ -56,13 +79,20 @@ export const getEmailConfig = () => {
     cleanEnv(process.env.SMTP_SERVICE) ||
     (user?.endsWith("@gmail.com") || user?.endsWith("@googlemail.com") ? "gmail" : null);
 
-  const fromEmail =
+  const rawFrom =
     cleanEnv(process.env.EMAIL_FROM) ||
     cleanEnv(process.env.MAIL_FROM) ||
-    cleanEnv(process.env.FROM_EMAIL) ||
-    user;
+    cleanEnv(process.env.FROM_EMAIL);
 
-  const fromName = cleanEnv(process.env.EMAIL_FROM_NAME) || "SmartFYP Academic Portal";
+  const parsedFrom = parseEmailAddress(rawFrom);
+  const fromEmail = parsedFrom.email || user;
+
+  const fromName =
+    cleanEnv(process.env.EMAIL_FROM_NAME) ||
+    cleanEnv(process.env.MAIL_FROM_NAME) ||
+    parsedFrom.name ||
+    parsedUser.name ||
+    "SmartFYP Academic Portal";
 
   const secure =
     process.env.EMAIL_SECURE === "true" ||
@@ -89,9 +119,9 @@ export const getEmailConfig = () => {
 const createTransporter = (config, strategy = "primary") => {
   const { user, pass, host, port, service, secure } = config;
 
-  const connectionTimeout = 4000;
-  const greetingTimeout = 4000;
-  const socketTimeout = 5000;
+  const connectionTimeout = 5000;
+  const greetingTimeout = 5000;
+  const socketTimeout = 7000;
 
   if (strategy === "gmail-service" || (service === "gmail" && !host)) {
     return nodemailer.createTransport({
@@ -171,16 +201,26 @@ export const sendEmail = async (options) => {
     throw new Error(errorMsg);
   }
 
-  // Determine sender display
-  let fromHeader = `"${config.fromName}" <${config.fromEmail || config.user}>`;
-  if (config.user && config.user.includes("@gmail.com") && (!config.fromEmail || !config.fromEmail.includes("@gmail.com"))) {
-    // Gmail SMTP forces sender to match authenticated account
-    fromHeader = `"${config.fromName}" <${config.user}>`;
+  const targetEmail = parseEmailAddress(options.email).email || (options.email ? options.email.trim() : null);
+  if (!targetEmail) {
+    throw new Error("Recipient email address is missing or invalid.");
   }
+
+  // Determine clean, compliant sender display
+  const isGmail =
+    config.user?.endsWith("@gmail.com") ||
+    config.user?.endsWith("@googlemail.com") ||
+    config.service === "gmail" ||
+    config.host === "smtp.gmail.com";
+
+  const senderEmail = isGmail ? config.user : (config.fromEmail || config.user);
+  const cleanDisplayName = (config.fromName || "SmartFYP Academic Portal").replace(/["\\]/g, "").trim();
+  const fromHeader = `"${cleanDisplayName}" <${senderEmail}>`;
 
   const mailOptions = {
     from: fromHeader,
-    to: options.email,
+    to: targetEmail,
+    replyTo: senderEmail,
     subject: options.subject,
     text: options.message,
     html:
@@ -196,7 +236,7 @@ export const sendEmail = async (options) => {
   // 1. Primary configured strategy
   // 2. Fallback port 587 / service if Gmail
   const strategies = [];
-  if (config.service === "gmail" || config.host === "smtp.gmail.com" || config.user?.endsWith("@gmail.com")) {
+  if (isGmail) {
     strategies.push("gmail-587");
     strategies.push("gmail-service");
     strategies.push("gmail-465");
@@ -212,12 +252,12 @@ export const sendEmail = async (options) => {
       const transporter = createTransporter(config, strat);
       const info = await transporter.sendMail(mailOptions);
       console.log(
-        `✅ [Email Service] Successfully sent "${options.subject}" to ${options.email} via strategy (${strat}). Message ID: ${info.messageId}`
+        `✅ [Email Service] Successfully sent "${options.subject}" to ${targetEmail} via strategy (${strat}). Message ID: ${info.messageId}`
       );
       return { success: true, messageId: info.messageId, strategy: strat };
     } catch (err) {
       lastError = err;
-      console.warn(`⚠️ [Email Service] Strategy '${strat}' failed for ${options.email}:`, err.message);
+      console.warn(`⚠️ [Email Service] Strategy '${strat}' failed for ${targetEmail}:`, err.message);
     }
   }
 

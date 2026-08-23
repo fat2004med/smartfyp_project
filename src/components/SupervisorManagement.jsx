@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -35,7 +35,7 @@ const SupervisorManagement = () => {
   const fetchSupervisors = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get('/api/users');
+      const { data } = await api.get('/api/users');
       setSupervisors(Array.isArray(data) ? data.filter(u => u.role && (u.role.includes('Supervisor') || u.role.includes('HOD'))) : []);
     } catch (error) {
       toast.error('Error fetching supervisors');
@@ -46,7 +46,7 @@ const SupervisorManagement = () => {
 
   const fetchDepartments = async () => {
     try {
-      const { data } = await axios.get('/api/departments');
+      const { data } = await api.get('/api/departments');
       setDepartments(data);
     } catch (error) {
       console.error('Error fetching departments');
@@ -59,7 +59,7 @@ const SupervisorManagement = () => {
       fetchDepartments();
     };
     init();
-  }, [fetchSupervisors, fetchDepartments]);
+  }, []);
 
   const [newSupervisor, setNewSupervisor] = useState({
     name: '',
@@ -107,11 +107,17 @@ const SupervisorManagement = () => {
     if (e && e.preventDefault) e.preventDefault();
     if (!validateSupervisorData(newSupervisor)) return;
     try {
-      await axios.post('/api/users', {
+      const { data } = await api.post('/api/users', {
         ...newSupervisor,
-        role: 'Supervisor'
+        role: 'Supervisor',
+        origin: window.location.origin
       });
       resetForm();
+      if (data.emailSent) {
+        toast.success(`Supervisor created! Welcome email sent to ${data.email}`);
+      } else {
+        toast.success(`Supervisor created! Temp password: ${data.temporaryPassword || '@FYP_Secure_pass1'}`);
+      }
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
       fetchSupervisors();
@@ -123,7 +129,7 @@ const SupervisorManagement = () => {
   const handleDeleteSupervisor = async (id) => {
     if (window.confirm('Are you sure you want to delete this supervisor?')) {
       try {
-        await axios.delete(`/api/users/${id}`);
+        await api.delete(`/api/users/${id}`);
         toast.success('Supervisor removed');
         fetchSupervisors();
       } catch (error) {

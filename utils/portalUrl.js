@@ -1,66 +1,89 @@
 /**
  * Unified Portal Base URL Resolver
- * Determines the live portal URL for email notifications, password resets, and account invitations.
- * 
- * Default Live Domain: https://smartfypproject-production.up.railway.app
+ * Determines the exact live portal URL for email notifications, password resets, and account invitations.
+ * Dynamically resolves to the current active environment (Cloud Run, Railway, custom domain, or local preview).
  */
 
-export const LIVE_PORTAL_URL = "https://smartfypproject-production.up.railway.app";
+export const DEFAULT_FALLBACK_URL = "https://smartfypproject-production.up.railway.app";
+
+/**
+ * Validates and sanitizes a candidate URL string
+ */
+const sanitizeUrl = (candidate) => {
+  if (!candidate || typeof candidate !== "string") return null;
+  const trimmed = candidate.trim().replace(/\/+$/, "");
+  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+    return null;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch (e) {
+    return null;
+  }
+};
 
 export const getPortalBaseUrl = (req = null, explicitOrigin = null) => {
-  // 1. Check explicit environment configuration (if user customized it in Railway or server env)
-  const envUrl = process.env.APP_URL || process.env.CLIENT_URL || process.env.FRONTEND_URL || process.env.PUBLIC_URL;
-  if (envUrl && typeof envUrl === "string" && envUrl.trim() !== "") {
-    const trimmed = envUrl.trim().replace(/\/+$/, "");
-    if (!trimmed.includes("localhost") && !trimmed.includes("127.0.0.1") && !trimmed.includes(".run.app")) {
-      return trimmed;
-    }
-  }
+  // 1. Highest Priority: Explicit origin passed directly by the caller or request payload
+  const cleanExplicit = sanitizeUrl(explicitOrigin);
+  if (cleanExplicit) return cleanExplicit;
 
-  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
-    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`.replace(/\/+$/, "");
-  }
+  const cleanBodyOrigin = sanitizeUrl(req?.body?.origin);
+  if (cleanBodyOrigin) return cleanBodyOrigin;
 
-  // 2. Check if request came from a custom production domain or Railway domain
-  const checkUrl = (candidate) => {
-    if (!candidate || typeof candidate !== "string" || !candidate.startsWith("http")) return null;
-    const clean = candidate.trim().replace(/\/+$/, "");
-    // If it's a dev sandbox (e.g. Google Cloud Run preview, localhost), reject it in favor of live Railway URL
-    if (clean.includes("localhost") || clean.includes("127.0.0.1") || clean.includes(".run.app") || clean.includes("webcontainer")) {
-      return null;
-    }
-    return clean;
-  };
+  const cleanQueryOrigin = sanitizeUrl(req?.query?.origin);
+  if (cleanQueryOrigin) return cleanQueryOrigin;
 
-  const validExplicit = checkUrl(explicitOrigin);
-  if (validExplicit) return validExplicit;
-
-  const validBody = checkUrl(req?.body?.origin);
-  if (validBody) return validBody;
-
-  const validQuery = checkUrl(req?.query?.origin);
-  if (validQuery) return validQuery;
-
+  // 2. Request Headers from live browser interaction
   if (req) {
+    // Check standard Origin header
     const originHeader = typeof req.get === "function" ? req.get("origin") : req.headers?.origin;
-    const validOrigin = checkUrl(originHeader);
-    if (validOrigin) return validOrigin;
+    const cleanOriginHeader = sanitizeUrl(originHeader);
+    if (cleanOriginHeader) return cleanOriginHeader;
 
+    // Check Referer header (extract origin)
     const refererHeader = typeof req.get === "function" ? req.get("referer") : req.headers?.referer;
     if (refererHeader) {
       try {
-        const parsed = new URL(refererHeader).origin;
-        const validReferer = checkUrl(parsed);
-        if (validReferer) return validReferer;
+        const parsedReferer = new URL(refererHeader).origin;
+        const cleanReferer = sanitizeUrl(parsedReferer);
+        if (cleanReferer) return cleanReferer;
       } catch (e) {
-        // ignore parse error
+        // ignore invalid URL
       }
+    }
+
+    // Check X-Forwarded-Host (used by Cloud Run, reverse proxies, and Railway)
+    const forwardedHost = typeof req.get === "function" ? req.get("x-forwarded-host") : req.headers?.["x-forwarded-host"];
+    if (forwardedHost) {
+      const forwardedProto = (typeof req.get === "function" ? req.get("x-forwarded-proto") : req.headers?.["x-forwarded-proto"]) || "https";
+      const cleanForwarded = sanitizeUrl(`${forwardedProto}://${forwardedHost.split(",")[0].trim()}`);
+      if (cleanForwarded) return cleanForwarded;
+    }
+
+    // Check standard Host header
+    const hostHeader = typeof req.get === "function" ? req.get("host") : req.headers?.host;
+    if (hostHeader) {
+      const proto = req.secure || (typeof req.get === "function" && req.get("x-forwarded-proto") === "https") ? "https" : (req.protocol || "https");
+      const cleanHost = sanitizeUrl(`${proto}://${hostHeader}`);
+      if (cleanHost) return cleanHost;
     }
   }
 
-  // 3. Guaranteed fallback to the live Railway portal deployment
-  return LIVE_PORTAL_URL;
+  // 3. Explicit Environment Variables (configured in deployment)
+  const envUrl = process.env.APP_URL || process.env.CLIENT_URL || process.env.FRONTEND_URL || process.env.PUBLIC_URL || process.env.BASE_URL;
+  const cleanEnvUrl = sanitizeUrl(envUrl);
+  if (cleanEnvUrl) return cleanEnvUrl;
+
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    const cleanRailway = sanitizeUrl(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+    if (cleanRailway) return cleanRailway;
+  }
+
+  // 4. Default Fallback
+  return DEFAULT_FALLBACK_URL;
 };
 
 export default getPortalBaseUrl;
+
 

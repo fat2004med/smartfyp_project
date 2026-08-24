@@ -306,9 +306,14 @@ export const resetPassword = async (req, res) => {
               </p>
 
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${loginUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
+                <a href="${loginUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff !important; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
                   Sign In To Portal
                 </a>
+              </div>
+
+              <div style="margin: 20px 0; background-color: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 13px; color: #475569;">
+                <p style="margin: 0 0 4px 0; font-weight: 600;">Direct Link:</p>
+                <a href="${loginUrl}" target="_blank" style="color: #2563eb; word-break: break-all; text-decoration: underline;">${loginUrl}</a>
               </div>
 
               <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin-bottom: 16px;">
@@ -406,9 +411,14 @@ export const updatePassword = async (req, res) => {
               </p>
 
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${loginUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
+                <a href="${loginUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff !important; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
                   Go To Portal
                 </a>
+              </div>
+
+              <div style="margin: 20px 0; background-color: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 13px; color: #475569;">
+                <p style="margin: 0 0 4px 0; font-weight: 600;">Direct Link:</p>
+                <a href="${loginUrl}" target="_blank" style="color: #2563eb; word-break: break-all; text-decoration: underline;">${loginUrl}</a>
               </div>
 
               <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin-bottom: 16px;">

@@ -131,8 +131,8 @@ const buildWelcomeEmailHtml = ({ name, email, role, temporaryPassword, loginUrl 
       padding: 14px 36px;
       border-radius: 10px;
       font-weight: 700;
-      font-size: 15px;
-      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+      font-size: 16px;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.25);
     }
     .footer {
       background-color: #f8fafc;
@@ -181,7 +181,12 @@ const buildWelcomeEmailHtml = ({ name, email, role, temporaryPassword, loginUrl 
         </div>
 
         <div class="cta-container">
-          <a href="${loginUrl}" class="cta-button" target="_blank" style="color: #ffffff; text-decoration: none;">Sign In To SmartFYP</a>
+          <a href="${loginUrl}" class="cta-button" target="_blank" style="display: inline-block; background-color: #2563eb; color: #ffffff !important; font-weight: 700; font-size: 16px; padding: 14px 36px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">Sign In To SmartFYP</a>
+        </div>
+
+        <div style="margin-top: 24px; background-color: #f1f5f9; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #475569;">
+          <p style="margin: 0 0 6px 0; font-weight: 600; color: #334155;">Direct Portal Link:</p>
+          <a href="${loginUrl}" target="_blank" style="color: #2563eb; word-break: break-all; text-decoration: underline; font-weight: 600;">${loginUrl}</a>
         </div>
 
         <p class="intro" style="margin-top: 28px; margin-bottom: 0;">If you have any questions or require assistance, please get in touch with your department coordinator or Administrator.<br><br>Best Regards,<br><strong>SmartFYP Team</strong></p>
@@ -575,7 +580,11 @@ export const resetUserPassword = async (req, res) => {
               </div>
               <p>${requirePasswordChange ? "You will be prompted to create your new personal password upon your next login." : ""}</p>
               <div style="text-align: center; margin: 24px 0;">
-                <a href="${loginUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Login to SmartFYP</a>
+                <a href="${loginUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">Login to SmartFYP</a>
+              </div>
+              <div style="margin-top: 20px; background-color: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 13px; color: #475569;">
+                <p style="margin: 0 0 4px 0; font-weight: 600;">Direct Login Link:</p>
+                <a href="${loginUrl}" target="_blank" style="color: #2563eb; word-break: break-all; text-decoration: underline;">${loginUrl}</a>
               </div>
               <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
               <p style="font-size: 12px; color: #94a3b8;">If you did not request this assistance, please contact your department coordinator.</p>

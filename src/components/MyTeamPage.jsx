@@ -20,12 +20,17 @@ import {
   Edit2,
   Save,
   X,
-  Sparkles
+  Sparkles,
+  Download,
+  Eye
 } from 'lucide-react';
+import DocumentViewerModal from './DocumentViewerModal';
+import { triggerDirectDownload } from '../utils/fileHelpers';
 
 const MyTeamPage = () => {
   const { user } = useAuth();
   const [project, setProject] = useState(null);
+  const [viewerDoc, setViewerDoc] = useState({ isOpen: false, fileUrl: '', title: '' });
 
   const isTeamLeader = 
     user?.role === 'Team Leader' || 
@@ -390,15 +395,30 @@ const MyTeamPage = () => {
               )}
 
               {project.fileUrl ? (
-                <a 
-                  href={project.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-2xl hover:bg-blue-100 transition-all text-xs font-bold text-blue-700 shadow-xs"
-                >
-                  <span>Proposal Document File</span>
-                  <ExternalLink size={14} className="text-blue-500" />
-                </a>
+                <div className="flex items-center gap-1.5 p-2 bg-blue-50 border border-blue-200 rounded-2xl">
+                  <button
+                    type="button"
+                    onClick={() => setViewerDoc({
+                      isOpen: true,
+                      fileUrl: project.fileUrl,
+                      title: `${project.title} (Proposal Document)`
+                    })}
+                    className="flex-1 flex items-center justify-between p-2 hover:bg-blue-100/70 rounded-xl transition-all text-xs font-bold text-blue-700 cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5 truncate">
+                      <Eye size={14} className="text-blue-600 flex-shrink-0" />
+                      <span className="truncate">View Proposal</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => triggerDirectDownload(project.fileUrl)}
+                    className="p-2 bg-white hover:bg-gray-100 rounded-xl text-gray-700 transition-all border border-gray-200 shadow-xs cursor-pointer flex-shrink-0"
+                    title="Download Proposal Document"
+                  >
+                    <Download size={14} />
+                  </button>
+                </div>
               ) : (
                 <div className="p-4 bg-gray-50 border border-gray-100 text-gray-400 rounded-2xl text-center text-xs font-medium italic">
                   No Proposal File Submitted
@@ -723,6 +743,13 @@ const MyTeamPage = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <DocumentViewerModal
+        isOpen={viewerDoc.isOpen}
+        onClose={() => setViewerDoc({ isOpen: false, fileUrl: '', title: '' })}
+        fileUrl={viewerDoc.fileUrl}
+        title={viewerDoc.title}
+      />
     </div>
   );
 };

@@ -38,6 +38,7 @@ import dashboardRoutes from "./routes/dashboardRoutes.js";
 import assignmentRoutes from "./routes/assignmentRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import plagiarismRoutes from "./routes/plagiarismRoutes.js";
+import fileRoutes from "./routes/fileRoutes.js";
 import recommender from "./utils/recommender.js";
 
 dotenv.config();
@@ -106,6 +107,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/assignments", assignmentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/plagiarism", plagiarismRoutes);
+app.use("/api/files", fileRoutes);
 
 // Register public contact forms
 app.post("/api/contact", async (req, res, next) => {

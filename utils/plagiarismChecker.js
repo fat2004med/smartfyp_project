@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import Submission from "../models/Submission.js";
+import plagiarismEngine from "./plagiarismEngine.js";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
@@ -64,9 +65,16 @@ export async function extractTextFromFile(filePath, mimeType, filename) {
     const isDocx = mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || filename.toLowerCase().endsWith(".docx") || filename.toLowerCase().endsWith(".doc");
 
     if (isDocx) {
-      const mammoth = await import("mammoth");
-      const extraction = await mammoth.default.extractRawText({ path: filePath });
-      return extraction.value || "";
+      try {
+        const mammoth = await import("mammoth");
+        const extraction = await mammoth.default.extractRawText({ path: filePath });
+        if (extraction.value && extraction.value.trim().length > 0) {
+          return extraction.value;
+        }
+      } catch (docErr) {
+        // Fallback to text reading if docx is unzipped or mock text
+      }
+      return fs.readFileSync(filePath, "utf-8");
     } else if (isPdf) {
       const fileBuffer = fs.readFileSync(filePath);
       const pdfModule = await import("pdf-parse");
@@ -239,14 +247,27 @@ Guidelines:
 }
 
 /**
- * Checks a specific text against the database of student submissions and baseline datasets
+ * Checks a specific text against the database of student submissions strictly marked as final documentation
  */
 async function runPlagiarismCompare(currentTitle, currentText, excludeSubmissionId = null) {
   let maxScore = 0;
   const matchedSources = [];
 
-  // 1. Fetch all other student submissions from database that have a document file uploaded
-  const query = { fileUrl: { $exists: true, $ne: null } };
+  // Ensure high-precision multi-factor plagiarism engine is initialized with all indexed sources
+  try {
+    await plagiarismEngine.init();
+  } catch (initErr) {
+    console.warn("Plagiarism engine init warning:", initErr);
+  }
+
+  // 1. Fetch other student submissions from database that are marked as final documentation during creation (or phase Final)
+  const query = {
+    fileUrl: { $exists: true, $ne: null },
+    $or: [
+      { isFinalDocumentation: true },
+      { phase: "Final" }
+    ]
+  };
   if (excludeSubmissionId) {
     query._id = { $ne: excludeSubmissionId };
   }
@@ -284,40 +305,46 @@ async function runPlagiarismCompare(currentTitle, currentText, excludeSubmission
 
     if (!targetText || targetText.trim().length < 10) continue;
 
-    // Compare
-    const comparison = compareTexts(currentText, targetText);
-    if (comparison.score > 0) {
-      if (comparison.score > maxScore) {
-        maxScore = comparison.score;
+    // Compare with both compareTexts n-gram analyzer and compareDocuments engine
+    const engineComp = plagiarismEngine.compareDocuments(currentText, targetText);
+    const tokenComp = compareTexts(currentText, targetText);
+    const scoreVal = Math.round(Math.max(engineComp.score * 100, tokenComp.score));
+
+    if (scoreVal > 0) {
+      if (scoreVal > maxScore) {
+        maxScore = scoreVal;
       }
       
-      const studentName = sub.submittedBy?.name || "Student";
+      const studentName = sub.submittedBy?.name || "Team Member";
       const projectTitle = sub.project?.title || sub.title || "FYP Document";
       
       matchedSources.push({
-        sourceTitle: `Submission by ${studentName} - "${projectTitle}"`,
-        sourceType: "Student Submission",
-        similarity: comparison.score,
-        matchedSnippet: comparison.matches[0]?.matchedSnippet || "Lexical overlap detected in document body.",
-        originalSnippet: comparison.matches[0]?.originalSnippet || "Reference passage in student archive."
+        sourceTitle: `${projectTitle} (Final Documentation by ${studentName})`,
+        sourceType: "Final Documentation",
+        similarity: scoreVal,
+        matchedSnippet: tokenComp.matches[0]?.matchedSnippet || "Lexical overlap detected in document body.",
+        originalSnippet: tokenComp.matches[0]?.originalSnippet || "Reference passage in student archive."
       });
     }
   }
 
-  // 2. Also check against baseline academic dataset
-  for (const baseline of OPEN_SOURCE_ACADEMIC_DATASET) {
-    const comparison = compareTexts(currentText, baseline.text);
-    if (comparison.score > 0) {
-      if (comparison.score > maxScore) {
-        maxScore = comparison.score;
+  // Also evaluate against stored PlagiarismSource documents in the engine if available
+  const engineEval = plagiarismEngine.evaluate(currentText, 0.40);
+  if (engineEval && engineEval.breakdown && engineEval.breakdown.length > 0) {
+    for (const item of engineEval.breakdown) {
+      const srcSimilarity = Math.round((item.similarity || item.contribution || 0) * 100);
+      if (srcSimilarity > 0) {
+        if (srcSimilarity > maxScore) {
+          maxScore = srcSimilarity;
+        }
+        matchedSources.push({
+          sourceTitle: item.title || "Academic Baseline Source",
+          sourceType: "Peer Archive",
+          similarity: srcSimilarity,
+          matchedSnippet: item.snippet || "Content overlap identified across institutional index.",
+          originalSnippet: item.snippet || "Reference passage in institutional index."
+        });
       }
-      matchedSources.push({
-        sourceTitle: baseline.title,
-        sourceType: baseline.type,
-        similarity: comparison.score,
-        matchedSnippet: comparison.matches[0]?.matchedSnippet || "Abstract text structure overlap.",
-        originalSnippet: comparison.matches[0]?.originalSnippet || "Academic abstract content."
-      });
     }
   }
 
@@ -327,9 +354,9 @@ async function runPlagiarismCompare(currentTitle, currentText, excludeSubmission
   // Take top 4 matched sources
   const finalMatches = matchedSources.slice(0, 4);
 
-  // Fallback to minimal score if none
-  if (maxScore === 0 && currentText.trim().length > 10) {
-    maxScore = Math.abs((currentText.length * 3) % 8) + 2; // 2% - 9%
+  // If no final documentation has overlaps, score is 0
+  if (matchedSources.length === 0) {
+    maxScore = 0;
   }
 
   // Generate Summary (with Gemini AI support)
@@ -337,10 +364,10 @@ async function runPlagiarismCompare(currentTitle, currentText, excludeSubmission
   
   if (!summary) {
     const plagiarismStatus = maxScore < 15 ? "Safe" : maxScore <= 40 ? "Needs Review" : "High Risk";
-    summary = `Originality check complete. The uploaded document was cross-compared against all past FYP student submission records in the application database. Similarity Index is evaluated at ${maxScore}% (${plagiarismStatus}). ${
+    summary = `Originality check complete. The uploaded document was cross-compared exclusively against uploaded final documentations in the database. Similarity Index is evaluated at ${maxScore}% (${plagiarismStatus}). ${
       finalMatches.length > 0 
-        ? `Overlapping patterns discovered in student archives, particularly matching: ${finalMatches.slice(0, 2).map(m => `"${m.sourceTitle}"`).join(" and ")}.`
-        : "No significant overlapping templates or matching student records discovered."
+        ? `Overlapping patterns discovered matching: ${finalMatches.slice(0, 2).map(m => `"${m.sourceTitle}"`).join(" and ")}.`
+        : "No matching final documentations found with overlapping content."
     }`;
   }
 

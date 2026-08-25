@@ -14,8 +14,11 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
-  MessageSquare
+  MessageSquare,
+  Eye
 } from 'lucide-react';
+import DocumentViewerModal from './DocumentViewerModal';
+import { triggerDirectDownload } from '../utils/fileHelpers';
 
 const ReviewQueue = () => {
   const { user } = useAuth();
@@ -23,6 +26,7 @@ const ReviewQueue = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedReview, setSelectedReview] = useState(null);
+  const [viewerDoc, setViewerDoc] = useState({ isOpen: false, fileUrl: '', title: '' });
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [feedbackText, setFeedbackText] = useState('');
@@ -275,24 +279,38 @@ const ReviewQueue = () => {
                         </div>
                         <div className="space-y-4">
                           <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Actions</h5>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="flex flex-wrap items-center gap-3">
                             {review.fileUrl && (
-                              <a 
-                                href={review.fileUrl} 
-                                target="_blank" 
-                                rel="noreferrer"
-                                className="flex items-center justify-center gap-2 bg-white border border-gray-200 p-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all shadow-sm"
-                              >
-                                <Download size={18} />
-                                Download File
-                              </a>
+                              <>
+                                <button 
+                                  type="button"
+                                  onClick={() => setViewerDoc({
+                                    isOpen: true,
+                                    fileUrl: review.fileUrl,
+                                    title: `${review.title || 'Submission Document'}${review.team?.name ? ` (${review.team.name})` : ''}`
+                                  })}
+                                  className="flex items-center justify-center gap-2 bg-blue-50 border border-blue-150 p-3 rounded-xl text-sm font-bold text-blue-700 hover:bg-blue-100 transition-all shadow-xs cursor-pointer flex-1"
+                                >
+                                  <Eye size={17} />
+                                  View Document
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={() => triggerDirectDownload(review.fileUrl)}
+                                  className="flex items-center justify-center gap-2 bg-white border border-gray-200 p-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all shadow-xs cursor-pointer"
+                                  title="Download File"
+                                >
+                                  <Download size={17} />
+                                  Download
+                                </button>
+                              </>
                             )}
                             {review.link && (
                               <a 
                                 href={review.link} 
                                 target="_blank" 
                                 rel="noreferrer"
-                                className="flex items-center justify-center gap-2 bg-white border border-gray-200 p-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all shadow-sm"
+                                className="flex items-center justify-center gap-2 bg-white border border-gray-200 p-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all shadow-sm flex-1"
                               >
                                 <ExternalLink size={18} />
                                 View Link
@@ -403,6 +421,13 @@ const ReviewQueue = () => {
           </div>
         )}
       </div>
+
+      <DocumentViewerModal
+        isOpen={viewerDoc.isOpen}
+        onClose={() => setViewerDoc({ isOpen: false, fileUrl: '', title: '' })}
+        fileUrl={viewerDoc.fileUrl}
+        title={viewerDoc.title}
+      />
     </div>
   );
 };

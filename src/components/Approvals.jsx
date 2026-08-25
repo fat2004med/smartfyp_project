@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -15,20 +15,24 @@ import {
   X,
   AlertCircle,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Download
 } from 'lucide-react';
+import DocumentViewerModal from './DocumentViewerModal';
+import { triggerDirectDownload } from '../utils/fileHelpers';
 
 const Approvals = () => {
   const { user, activeRole } = useAuth();
   const [activeTab, setActiveTab] = useState('Pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedApproval, setSelectedApproval] = useState(null);
+  const [viewerDoc, setViewerDoc] = useState({ isOpen: false, fileUrl: '', title: '' });
   const [showToast, setShowToast] = useState(null);
   const [feedbackText, setFeedbackText] = useState('');
   const [loading, setLoading] = useState(true);
   const [approvals, setApprovals] = useState([]);
 
-  const fetchApprovals = async () => {
+  const fetchApprovals = useCallback(async () => {
     try {
       setLoading(true);
       const [projectsRes, submissionsRes] = await Promise.all([
@@ -136,11 +140,11 @@ const Approvals = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeRole]);
 
   useEffect(() => {
     fetchApprovals();
-  }, [activeRole]);
+  }, [fetchApprovals]);
 
   const handleAction = async (item, action) => {
     try {
@@ -423,16 +427,28 @@ const Approvals = () => {
                 </div>
 
                 {selectedApproval.fileUrl && (
-                  <div>
-                    <a 
-                      href={selectedApproval.fileUrl} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 font-bold text-xs rounded-xl hover:bg-blue-100 transition-colors"
+                  <div className="flex items-center gap-2">
+                    <button 
+                      type="button"
+                      onClick={() => setViewerDoc({
+                        isOpen: true,
+                        fileUrl: selectedApproval.fileUrl,
+                        title: `${selectedApproval.title || 'Submitted Document'} (${selectedApproval.teamName || 'FYP Team'})`
+                      })}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-colors cursor-pointer border border-blue-100 shadow-xs"
                     >
-                      <ExternalLink size={14} />
-                      View Submitted Document File
-                    </a>
+                      <Eye size={15} />
+                      View Document
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => triggerDirectDownload(selectedApproval.fileUrl)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors cursor-pointer border border-gray-200 shadow-xs"
+                      title="Download Attachment"
+                    >
+                      <Download size={15} />
+                      Download
+                    </button>
                   </div>
                 )}
 
@@ -466,6 +482,13 @@ const Approvals = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <DocumentViewerModal
+        isOpen={viewerDoc.isOpen}
+        onClose={() => setViewerDoc({ isOpen: false, fileUrl: '', title: '' })}
+        fileUrl={viewerDoc.fileUrl}
+        title={viewerDoc.title}
+      />
     </div>
   );
 };

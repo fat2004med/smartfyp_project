@@ -20,8 +20,11 @@ import {
   XCircle,
   ExternalLink,
   MessageSquare,
-  File as FileIcon
+  File as FileIcon,
+  Download
 } from 'lucide-react';
+import DocumentViewerModal from './DocumentViewerModal';
+import { triggerDirectDownload } from '../utils/fileHelpers';
 
 const TaskManagement = () => {
   const { user } = useAuth();
@@ -29,6 +32,7 @@ const TaskManagement = () => {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [viewerDoc, setViewerDoc] = useState({ isOpen: false, fileUrl: '', title: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [loading, setLoading] = useState(true);
@@ -585,15 +589,28 @@ const TaskManagement = () => {
                     {selectedTask.submission?.fileUrl && (
                       <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Attached File</p>
-                        <a 
-                          href={selectedTask.submission.fileUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-purple-600 font-bold text-sm flex items-center gap-2 hover:underline break-all"
-                        >
-                          <FileIcon size={14} />
-                          Download File
-                        </a>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => setViewerDoc({
+                              isOpen: true,
+                              fileUrl: selectedTask.submission.fileUrl,
+                              title: `${selectedTask.title} (Submission File)`
+                            })}
+                            className="text-purple-600 hover:text-purple-800 font-bold text-xs flex items-center gap-1.5 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-xl border border-purple-100 transition-all cursor-pointer"
+                          >
+                            <Eye size={13} />
+                            View
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => triggerDirectDownload(selectedTask.submission.fileUrl)}
+                            title="Direct Download"
+                            className="text-gray-600 hover:text-gray-900 font-bold text-xs flex items-center gap-1 bg-white hover:bg-gray-100 px-2 py-1.5 rounded-xl border border-gray-200 transition-all cursor-pointer shadow-xs"
+                          >
+                            <Download size={13} />
+                          </button>
+                        </div>
                       </div>
                     )}
                     <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
@@ -736,15 +753,28 @@ const TaskManagement = () => {
                           </a>
                         )}
                         {selectedTask.submission.fileUrl && (
-                          <a 
-                            href={selectedTask.submission.fileUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-purple-600 bg-white p-3 rounded-xl border border-purple-100 hover:bg-purple-50 transition-all font-bold text-xs"
-                          >
-                            <FileIcon size={14} />
-                            View Attached File
-                          </a>
+                          <div className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-purple-100">
+                            <button 
+                              type="button"
+                              onClick={() => setViewerDoc({
+                                isOpen: true,
+                                fileUrl: selectedTask.submission.fileUrl,
+                                title: `${selectedTask.title} (Attached File)`
+                              })}
+                              className="flex items-center gap-2 text-purple-600 hover:text-purple-800 transition-all font-bold text-xs flex-1 text-left cursor-pointer"
+                            >
+                              <Eye size={14} />
+                              View Attached File
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => triggerDirectDownload(selectedTask.submission.fileUrl)}
+                              className="p-1 text-gray-500 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
+                              title="Download Attached File"
+                            >
+                              <Download size={14} />
+                            </button>
+                          </div>
                         )}
                         {selectedTask.submission.grade && (
                           <div className="flex items-center gap-2">
@@ -778,6 +808,13 @@ const TaskManagement = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <DocumentViewerModal
+        isOpen={viewerDoc.isOpen}
+        onClose={() => setViewerDoc({ isOpen: false, fileUrl: '', title: '' })}
+        fileUrl={viewerDoc.fileUrl}
+        title={viewerDoc.title}
+      />
     </div>
   );
 };

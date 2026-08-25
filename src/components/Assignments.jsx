@@ -20,14 +20,18 @@ import {
   ThumbsDown, 
   MessageSquare,
   XCircle,
-  Edit3
+  Edit3,
+  Eye
 } from 'lucide-react';
+import DocumentViewerModal from './DocumentViewerModal';
+import { triggerDirectDownload } from '../utils/fileHelpers';
 
 const Assignments = () => {
   const { user } = useAuth();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [viewerDoc, setViewerDoc] = useState({ isOpen: false, fileUrl: '', title: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const activeRole = localStorage.getItem('activeDashboardRole') || (user?.role ? user.role.split(',')[0].trim() : '');
   const [activeTab, setActiveTab] = useState(activeRole === 'Admin' ? 'Creation History' : 'Assigned to Me');
@@ -939,14 +943,28 @@ const Assignments = () => {
                           </div>
                         </div>
                         {getUserSubmission(selectedAssignment).fileUrl && (
-                          <a 
-                            href={getUserSubmission(selectedAssignment).fileUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="bg-white p-2 rounded-lg text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                          >
-                            <Download size={16} />
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setViewerDoc({
+                                isOpen: true,
+                                fileUrl: getUserSubmission(selectedAssignment).fileUrl,
+                                title: `${selectedAssignment.title} (Your Submission)`
+                              })}
+                              className="bg-white hover:bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg text-blue-700 font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                            >
+                              <Eye size={14} />
+                              View Doc
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => triggerDirectDownload(getUserSubmission(selectedAssignment).fileUrl)}
+                              className="bg-white hover:bg-gray-100 border border-gray-200 p-2 rounded-lg text-gray-700 transition-all shadow-xs cursor-pointer"
+                              title="Download Submission File"
+                            >
+                              <Download size={14} />
+                            </button>
+                          </div>
                         )}
                       </div>
                       
@@ -1009,9 +1027,27 @@ const Assignments = () => {
                             <div className="flex items-center justify-between gap-4">
                                <div className="flex items-center gap-2">
                                   {sub.fileUrl && (
-                                    <a href={sub.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-gray-600 hover:text-blue-600 transition-colors border border-gray-200 shadow-sm">
-                                      <Download size={14} /> Doc
-                                    </a>
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setViewerDoc({
+                                          isOpen: true,
+                                          fileUrl: sub.fileUrl,
+                                          title: `${selectedAssignment.title} - ${sub.student?.name || 'Student'}`
+                                        })}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg text-xs font-bold text-blue-700 transition-colors border border-blue-150 shadow-xs cursor-pointer"
+                                      >
+                                        <Eye size={13} /> View Doc
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => triggerDirectDownload(sub.fileUrl)}
+                                        className="p-1.5 bg-white hover:bg-gray-100 rounded-lg text-xs font-bold text-gray-700 transition-colors border border-gray-200 shadow-xs cursor-pointer"
+                                        title="Download File"
+                                      >
+                                        <Download size={13} />
+                                      </button>
+                                    </div>
                                   )}
                                   {sub.link && (
                                     <a href={sub.link} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-gray-600 hover:text-blue-600 transition-colors border border-gray-200 shadow-sm">
@@ -1199,6 +1235,13 @@ const Assignments = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <DocumentViewerModal
+        isOpen={viewerDoc.isOpen}
+        onClose={() => setViewerDoc({ isOpen: false, fileUrl: '', title: '' })}
+        fileUrl={viewerDoc.fileUrl}
+        title={viewerDoc.title}
+      />
     </div>
   );
 };

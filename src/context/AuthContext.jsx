@@ -30,17 +30,22 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const verifySession = async () => {
-      if (user && user.token) {
+      const stored = localStorage.getItem('smartfyp_user');
+      if (stored) {
         try {
-          axios.defaults.headers.common['Authorization'] = `Bearer ${user.token}`;
-          const { data } = await axios.get('/api/users/profile');
-          // Update details with latest DB values but keep original token
-          const updatedUser = { ...data, token: user.token };
-          setUser(updatedUser);
-          localStorage.setItem('smartfyp_user', JSON.stringify(updatedUser));
+          const parsed = JSON.parse(stored);
+          if (parsed?.token) {
+            axios.defaults.headers.common['Authorization'] = `Bearer ${parsed.token}`;
+            const { data } = await axios.get('/api/users/profile');
+            // Update details with latest DB values but keep original token
+            const updatedUser = { ...data, token: parsed.token };
+            setUser(updatedUser);
+            localStorage.setItem('smartfyp_user', JSON.stringify(updatedUser));
+          }
         } catch (err) {
           if (err.response?.status === 401 || err.response?.status === 403) {
-            logout();
+            localStorage.removeItem('smartfyp_user');
+            setUser(null);
             window.location.href = '/login';
           }
         }
@@ -168,6 +173,7 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

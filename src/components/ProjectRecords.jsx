@@ -19,13 +19,17 @@ import {
   Award,
   ExternalLink,
   Mail,
-  Phone
+  Phone,
+  Download
 } from 'lucide-react';
+import DocumentViewerModal from './DocumentViewerModal';
+import { triggerDirectDownload } from '../utils/fileHelpers';
 
 const ProjectRecords = () => {
   const { user } = useAuth();
   const activeRole = localStorage.getItem('activeDashboardRole') || (user?.role ? user.role.split(',')[0].trim() : '');
   const [selectedProject, setSelectedProject] = useState(null);
+  const [viewerDoc, setViewerDoc] = useState({ isOpen: false, fileUrl: '', title: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
@@ -491,15 +495,34 @@ const ProjectRecords = () => {
                               
                               <div className="flex flex-wrap items-center gap-1.5">
                                 {doc.fileUrl && (
-                                  <a 
-                                    href={doc.fileUrl} 
-                                    target="_blank" 
-                                    referrerPolicy="no-referrer"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-[9px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 transition-all cursor-pointer"
-                                  >
-                                    View File
-                                  </a>
+                                  <div className="flex items-center gap-1">
+                                    <button 
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setViewerDoc({
+                                          isOpen: true,
+                                          fileUrl: doc.fileUrl,
+                                          title: `${doc.title || 'Documentation'} (${project.title})`
+                                        });
+                                      }}
+                                      className="flex items-center gap-1 text-[9px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-100 transition-all cursor-pointer"
+                                    >
+                                      <Eye size={10} />
+                                      View
+                                    </button>
+                                    <button 
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        triggerDirectDownload(doc.fileUrl);
+                                      }}
+                                      title="Download File"
+                                      className="flex items-center text-[9px] font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-200 transition-all cursor-pointer"
+                                    >
+                                      <Download size={10} />
+                                    </button>
+                                  </div>
                                 )}
                                 
                                 {doc.links && doc.links.filter(Boolean).map((link, idx) => (
@@ -856,15 +879,28 @@ const ProjectRecords = () => {
                         )}
 
                         {selectedProject.fileUrl ? (
-                          <a 
-                            href={selectedProject.fileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-all text-xs font-bold text-indigo-700"
-                          >
-                            <span>Proposal Document</span>
-                            <ExternalLink size={14} />
-                          </a>
+                          <div className="flex items-center justify-between p-2 sm:p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setViewerDoc({
+                                isOpen: true,
+                                fileUrl: selectedProject.fileUrl,
+                                title: `Proposal: ${selectedProject.title}`
+                              })}
+                              className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-900 transition-colors cursor-pointer truncate flex-1"
+                            >
+                              <Eye size={14} className="shrink-0 text-indigo-600" />
+                              <span className="truncate">Proposal Document</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => triggerDirectDownload(selectedProject.fileUrl)}
+                              title="Download Proposal Document"
+                              className="p-1.5 bg-white hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition-all cursor-pointer border border-indigo-200 shrink-0 shadow-2xs"
+                            >
+                              <Download size={13} />
+                            </button>
+                          </div>
                         ) : (
                           <div className="p-3 bg-gray-50 border border-gray-100 text-gray-400 rounded-xl text-center text-xs font-medium italic">
                             No document file
@@ -898,14 +934,28 @@ const ProjectRecords = () => {
                                   <p className="text-sm font-bold text-gray-900 leading-snug">{doc.title}</p>
                                   <p className="text-[10px] text-gray-400 font-medium font-sans">Approved on {doc.approvedAt ? new Date(doc.approvedAt).toLocaleDateString() : 'N/A'}</p>
                                 </div>
-                                <a
-                                  href={doc.fileUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-600 font-bold text-[11px] px-2.5 py-1.5 rounded-xl transition-all"
-                                >
-                                  View Doc
-                                </a>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewerDoc({
+                                      isOpen: true,
+                                      fileUrl: doc.fileUrl,
+                                      title: `${doc.title} (${selectedProject.title})`
+                                    })}
+                                    className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-700 font-bold text-xs px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <Eye size={13} />
+                                    View Doc
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => triggerDirectDownload(doc.fileUrl)}
+                                    className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                    title="Download Document"
+                                  >
+                                    <Download size={14} />
+                                  </button>
+                                </div>
                               </div>
                               {doc.history?.length > 0 && (
                                 <div className="pt-2 border-t border-gray-50 space-y-1">
@@ -914,14 +964,26 @@ const ProjectRecords = () => {
                                     {doc.history.map((ver, vidx) => (
                                       <div key={vidx} className="flex items-center justify-between p-2 bg-gray-50 rounded-xl border border-gray-100/50">
                                         <span className="text-[11px] text-gray-600 font-bold">Version {ver.version}</span>
-                                        <a
-                                          href={ver.fileUrl}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="text-[10px] text-indigo-500 font-bold hover:underline"
-                                        >
-                                          Download
-                                        </a>
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => setViewerDoc({
+                                              isOpen: true,
+                                              fileUrl: ver.fileUrl,
+                                              title: `${doc.title} (v${ver.version})`
+                                            })}
+                                            className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer"
+                                          >
+                                            View
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => triggerDirectDownload(ver.fileUrl)}
+                                            className="text-[10px] text-gray-500 hover:text-gray-900 font-bold cursor-pointer"
+                                          >
+                                            Download
+                                          </button>
+                                        </div>
                                       </div>
                                     ))}
                                   </div>
@@ -1496,6 +1558,14 @@ const ProjectRecords = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Document Viewer Modal */}
+      <DocumentViewerModal
+        isOpen={viewerDoc.isOpen}
+        onClose={() => setViewerDoc({ isOpen: false, fileUrl: '', title: '' })}
+        fileUrl={viewerDoc.fileUrl}
+        title={viewerDoc.title}
+      />
     </div>
   );
 };

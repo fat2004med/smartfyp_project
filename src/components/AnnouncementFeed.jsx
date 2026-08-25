@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, ChevronRight, Clock, Megaphone, Info, X, User, Paperclip, FileText } from 'lucide-react';
@@ -32,7 +32,7 @@ const AnnouncementFeed = () => {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
-  const fetchAnnouncements = async () => {
+  const fetchAnnouncements = useCallback(async () => {
     try {
       const { data } = await axios.get('/api/announcements');
       let list = [];
@@ -68,7 +68,7 @@ const AnnouncementFeed = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeRole, user]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -79,7 +79,7 @@ const AnnouncementFeed = () => {
     return () => {
       clearInterval(interval);
     };
-  }, []);
+  }, [fetchAnnouncements]);
 
   return (
     <div className="bg-white p-4 sm:p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col h-full">

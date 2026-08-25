@@ -13,6 +13,22 @@ import {
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
+// Suggested search prompts rotating pool
+const ALL_SUGGESTIONS = [
+  "Predictive maintenance for industrial factory devices",
+  "Post-quantum security cryptography on IoT wearables",
+  "Medical anomaly screening from radiology chest X-Rays",
+  "Autonomous robot pathfinding using reinforcement learning",
+  "Decentralized electronic voting with dual-factor security",
+  "Supply chain trace and audit verification system",
+  "AI-driven stock portfolio risk profiling tracker",
+  "Real-time sign language translator using computer vision",
+  "Smart agriculture leaf illness detector and soil telemetry",
+  "Automated news summarization and bias scoring portal",
+  "IoT water quality monitoring for marine preservation",
+  "Intelligent conversational assistant for mental health guidance"
+];
+
 const Ideas = () => {
   const [interest, setInterest] = useState('');
   const [domain, setDomain] = useState('');
@@ -24,22 +40,6 @@ const Ideas = () => {
   const [results, setResults] = useState([]);
   const [inferenceTime, setInferenceTime] = useState(null);
   const [modelMetrics, setModelMetrics] = useState(null);
-
-  // Suggested search prompts rotating pool
-  const ALL_SUGGESTIONS = [
-    "Predictive maintenance for industrial factory devices",
-    "Post-quantum security cryptography on IoT wearables",
-    "Medical anomaly screening from radiology chest X-Rays",
-    "Autonomous robot pathfinding using reinforcement learning",
-    "Decentralized electronic voting with dual-factor security",
-    "Supply chain trace and audit verification system",
-    "AI-driven stock portfolio risk profiling tracker",
-    "Real-time sign language translator using computer vision",
-    "Smart agriculture leaf illness detector and soil telemetry",
-    "Automated news summarization and bias scoring portal",
-    "IoT water quality monitoring for marine preservation",
-    "Intelligent conversational assistant for mental health guidance"
-  ];
 
   const [suggestions, setSuggestions] = useState(ALL_SUGGESTIONS.slice(0, 3));
 

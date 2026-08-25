@@ -18,8 +18,12 @@ import {
   AlertCircle,
   ChevronDown,
   Mail,
-  Phone
+  Phone,
+  Download,
+  Eye
 } from 'lucide-react';
+import DocumentViewerModal from '../components/DocumentViewerModal';
+import { triggerDirectDownload } from '../utils/fileHelpers';
 
 const AnimatedSelect = ({ label, value, options, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -94,8 +98,6 @@ const AnimatedSelect = ({ label, value, options, onChange }) => {
     </div>
   );
 };
-
-export const projectsData = [];
 
 export const ProjectCard = ({ project, onViewDetails, index = 0 }) => {
   const getGradient = (title) => {
@@ -195,6 +197,7 @@ export const ProjectCard = ({ project, onViewDetails, index = 0 }) => {
 };
 
 export const ProjectModal = ({ project, onClose }) => {
+  const [viewerDoc, setViewerDoc] = useState({ isOpen: false, fileUrl: '', title: '' });
   if (!project) return null;
 
   return (
@@ -295,6 +298,33 @@ export const ProjectModal = ({ project, onClose }) => {
                         <span className="text-gray-400 italic text-xs">Private or N/A</span>
                       )}
                     </div>
+
+                    {project.fileUrl && (
+                      <div className="flex items-center justify-between text-sm sm:col-span-2 border-b border-gray-100/50 pb-2">
+                        <span className="text-gray-500">Documentation / Proposal:</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setViewerDoc({
+                              isOpen: true,
+                              fileUrl: project.fileUrl,
+                              title: `${project.title} (Documentation)`
+                            })}
+                            className="font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 cursor-pointer transition-all"
+                          >
+                            <Eye size={12} /> View Document
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => triggerDirectDownload(project.fileUrl)}
+                            className="font-bold text-gray-700 hover:text-gray-900 bg-gray-100 px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 cursor-pointer transition-all"
+                            title="Download document file"
+                          >
+                            <Download size={12} /> Download
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -500,6 +530,13 @@ export const ProjectModal = ({ project, onClose }) => {
           </div>
         </div>
       </motion.div>
+
+      <DocumentViewerModal
+        isOpen={viewerDoc.isOpen}
+        onClose={() => setViewerDoc({ isOpen: false, fileUrl: '', title: '' })}
+        fileUrl={viewerDoc.fileUrl}
+        title={viewerDoc.title}
+      />
     </motion.div>
   );
 };

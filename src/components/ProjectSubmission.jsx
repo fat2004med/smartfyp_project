@@ -20,8 +20,11 @@ import {
   Link as LinkIcon,
   Send,
   Plus,
-  ShieldCheck
+  ShieldCheck,
+  Eye
 } from 'lucide-react';
+import DocumentViewerModal from './DocumentViewerModal';
+import { triggerDirectDownload } from '../utils/fileHelpers';
 
 const ProjectSelector = ({ currentProject, onSelect, activeRole }) => {
   const [projects, setProjects] = useState([]);
@@ -105,6 +108,7 @@ const ProjectSubmission = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scanningIds, setScanningIds] = useState([]);
   const [selectedPlagiarismReport, setSelectedPlagiarismReport] = useState(null);
+  const [viewerDoc, setViewerDoc] = useState({ isOpen: false, fileUrl: '', title: '' });
 
   const triggerPlagiarismCheck = async (id) => {
     setScanningIds(prev => [...prev, id]);
@@ -571,19 +575,32 @@ const ProjectSubmission = () => {
                       <td className="px-6 py-4">
                         {doc.fileUrl ? (
                           <div className="flex flex-col gap-1.5">
-                            <a 
-                              href={doc.fileUrl} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="flex items-center gap-1.5 text-blue-600 font-bold text-xs hover:underline decoration-2 underline-offset-4"
-                            >
-                              <Download size={14} />
-                              View Doc
-                            </a>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                type="button"
+                                onClick={() => setViewerDoc({ 
+                                  isOpen: true, 
+                                  fileUrl: doc.fileUrl, 
+                                  title: `${doc.title || 'Submission Document'}${project?.title ? ` (${project.title})` : ''}` 
+                                })}
+                                className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-bold text-xs hover:underline decoration-2 underline-offset-4 cursor-pointer bg-blue-50/80 hover:bg-blue-100/80 px-2.5 py-1 rounded-lg border border-blue-150 transition-all"
+                              >
+                                <Eye size={13} />
+                                View Doc
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => triggerDirectDownload(doc.fileUrl)}
+                                title="Direct Download File"
+                                className="flex items-center gap-1 text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                              >
+                                <Download size={13} />
+                              </button>
+                            </div>
                             {doc.links?.length > 0 && (
-                              <a href={doc.links[0]} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-indigo-500 font-bold text-xs">
+                              <a href={doc.links[0]} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-indigo-500 hover:text-indigo-700 font-bold text-xs pl-0.5">
                                 <LinkIcon size={12} />
-                                Repo
+                                Repo Link
                               </a>
                             )}
                             
@@ -861,11 +878,42 @@ const ProjectSubmission = () => {
                       <p className="text-sm text-gray-600 mb-4 line-height-relaxed font-medium">
                         {ver.comment || 'No comment provided for this version.'}
                       </p>
-                      <div className="flex items-center gap-3">
-                        <a href={ver.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-100 transition-colors">
-                          <Download size={14} />
-                          Download File
-                        </a>
+                      <div className="flex items-center gap-2">
+                        {ver.fileUrl && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setViewerDoc({
+                                isOpen: true,
+                                fileUrl: ver.fileUrl,
+                                title: `${historyDoc.title} (Version ${ver.version})`
+                              })}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              <Eye size={13} />
+                              View Document
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => triggerDirectDownload(ver.fileUrl)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              <Download size={13} />
+                              Download
+                            </button>
+                          </>
+                        )}
+                        {ver.links?.length > 0 && (
+                          <a 
+                            href={ver.links[0]} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-colors"
+                          >
+                            <LinkIcon size={12} />
+                            Repo
+                          </a>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -909,6 +957,42 @@ const ProjectSubmission = () => {
               </div>
 
               <form onSubmit={handleReview} className="p-8 space-y-6">
+                {selectedDoc?.fileUrl && (
+                  <div className="p-4 bg-blue-50/60 rounded-2xl border border-blue-100/80 flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2 bg-white text-blue-600 rounded-xl shadow-xs">
+                        <FileText size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-gray-900 truncate">Attached Document</p>
+                        <p className="text-[10px] text-gray-500 font-semibold">Preview submitted work</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setViewerDoc({
+                          isOpen: true,
+                          fileUrl: selectedDoc.fileUrl,
+                          title: `${selectedDoc.title} (Review Preview)`
+                        })}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                      >
+                        <Eye size={13} />
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => triggerDirectDownload(selectedDoc.fileUrl)}
+                        className="p-1.5 bg-white hover:bg-gray-100 text-gray-700 rounded-xl border border-gray-200 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                        title="Download Document"
+                      >
+                        <Download size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {reviewMode === 'full' && (
                   <div className="space-y-3">
                     <label className="text-sm font-bold text-gray-700 uppercase tracking-widest pl-1">Decision</label>
@@ -1372,6 +1456,14 @@ const ProjectSubmission = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Document Viewer Modal */}
+      <DocumentViewerModal
+        isOpen={viewerDoc.isOpen}
+        onClose={() => setViewerDoc({ isOpen: false, fileUrl: '', title: '' })}
+        fileUrl={viewerDoc.fileUrl}
+        title={viewerDoc.title}
+      />
     </div>
   );
 };

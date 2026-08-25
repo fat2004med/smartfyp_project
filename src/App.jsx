@@ -53,52 +53,6 @@ const AppContent = () => {
   const isDashboard = location.pathname.startsWith('/dashboard');
   const isLogin = location.pathname === '/login';
 
-  useEffect(() => {
-    const handleGlobalClick = async (e) => {
-      const anchor = e.target.closest('a');
-      if (!anchor) return;
-      
-      const href = anchor.getAttribute('href');
-      if (href && (href.startsWith('/uploads/') || href.includes('/uploads/'))) {
-        e.preventDefault();
-        const rawFileName = href.substring(href.lastIndexOf('/') + 1);
-        // Clean timestamp from upload filename if present (e.g. 17123985-filename.pdf)
-        const fileName = rawFileName.replace(/^\d+-/, '');
-        
-        let toastId = null;
-        try {
-          toastId = toast.loading(`Downloading ${fileName}...`);
-          const response = await fetch(href);
-          if (!response.ok) throw new Error('Download failed');
-          const blob = await response.blob();
-          
-          const blobUrl = window.URL.createObjectURL(blob);
-          const tempLink = document.createElement('a');
-          tempLink.href = blobUrl;
-          tempLink.setAttribute('download', fileName);
-          document.body.appendChild(tempLink);
-          tempLink.click();
-          
-          document.body.removeChild(tempLink);
-          window.URL.revokeObjectURL(blobUrl);
-          
-          toast.success('Download complete!', { id: toastId });
-        } catch (error) {
-          console.error('Failed programmatical download:', error);
-          if (toastId) {
-            toast.error('Direct download failed. Opening file...', { id: toastId });
-          }
-          window.open(href, '_blank');
-        }
-      }
-    };
-
-    document.addEventListener('click', handleGlobalClick);
-    return () => {
-      document.removeEventListener('click', handleGlobalClick);
-    };
-  }, []);
-
   return (
     <div className="min-h-screen bg-white font-sans selection:bg-blue-100 selection:text-blue-600">
       <ScrollToTop />

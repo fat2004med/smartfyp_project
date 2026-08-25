@@ -294,13 +294,42 @@ const Approvals = () => {
                     </span>
                   </div>
                   <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{approval.title}</h3>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
                     <span className="flex items-center gap-1 font-medium text-gray-700">
                       <Users size={14} /> {approval.submittedBy}
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock size={14} /> {approval.date}
                     </span>
+                    {approval.fileUrl && (
+                      <div className="flex items-center gap-1.5 ml-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setViewerDoc({
+                              isOpen: true,
+                              fileUrl: approval.fileUrl,
+                              title: `${approval.title} (${approval.submittedBy || 'Submitted Doc'})`
+                            });
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md border border-blue-100 transition-colors cursor-pointer"
+                        >
+                          <Eye size={11} /> View Doc
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerDirectDownload(approval.fileUrl);
+                          }}
+                          className="p-1 text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors cursor-pointer"
+                          title="Download File"
+                        >
+                          <Download size={11} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

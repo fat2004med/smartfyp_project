@@ -36,8 +36,11 @@ import {
   Send,
   AlertTriangle,
   Sparkles,
-  Gauge
+  Gauge,
+  Download
 } from 'lucide-react';
+import { DocumentViewerModal } from '../../components/DocumentViewerModal';
+import { triggerDirectDownload } from '../../utils/fileHelpers';
 import { 
   BarChart, 
   Bar, 
@@ -53,7 +56,7 @@ import {
   Area
 } from 'recharts';
 
-const DashboardOverview = ({ stats, statsData, supervisorStats, deptPerformance, recentAssignments, performanceTrend, allProjects, onViewSupervisorTeams, onViewProjectDetails }) => {
+const DashboardOverview = ({ stats, statsData, supervisorStats, deptPerformance, recentAssignments, performanceTrend, allProjects, onViewSupervisorTeams, onViewProjectDetails, onViewDoc }) => {
   const { user } = useAuth();
   const [drilldownSup, setDrilldownSup] = useState(null);
   const [workloadMode, setWorkloadMode] = useState('chart'); // 'chart' | 'matrix'
@@ -269,15 +272,24 @@ const DashboardOverview = ({ stats, statsData, supervisorStats, deptPerformance,
                         {/* Interactive Actions Grid */}
                         <div className="flex items-center gap-2 shrink-0">
                           {proj.fileUrl ? (
-                            <a 
-                              href={proj.fileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 hover:text-indigo-600 border border-gray-200 text-gray-700 rounded-xl text-xs font-black tracking-tight flex items-center gap-1.5 shadow-2xs transition-all"
-                              title="Download/Open uploaded document or proposal attachment"
-                            >
-                              <FileText size={14} /> Doc
-                            </a>
+                            <div className="flex items-center gap-1.5">
+                              <button 
+                                type="button"
+                                onClick={() => onViewDoc ? onViewDoc(proj.fileUrl, `${proj.title || 'Proposal'} (${proj.teamName || 'FYP Team'})`) : triggerDirectDownload(proj.fileUrl)}
+                                className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-black tracking-tight flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                                title="View proposal document"
+                              >
+                                <Eye size={13} /> Doc
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => triggerDirectDownload(proj.fileUrl)}
+                                className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                title="Download Proposal File"
+                              >
+                                <Download size={13} />
+                              </button>
+                            </div>
                           ) : (
                             <span className="text-[10px] font-bold text-gray-400 italic bg-gray-50 px-2.5 py-1.5 rounded-xl border border-gray-100">
                               No Doc
@@ -824,6 +836,7 @@ const HODDashboard = () => {
   const [selectedSupervisor, setSelectedSupervisor] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [allProjects, setAllProjects] = useState([]);
+  const [viewerDoc, setViewerDoc] = useState({ isOpen: false, fileUrl: '', title: '' });
   const location = useLocation();
 
   useEffect(() => {
@@ -903,6 +916,7 @@ const HODDashboard = () => {
             allProjects={allProjects}
             onViewSupervisorTeams={(sup) => setSelectedSupervisor(sup)}
             onViewProjectDetails={(proj) => setSelectedTeam(proj)}
+            onViewDoc={(fileUrl, title) => setViewerDoc({ isOpen: true, fileUrl, title })}
           />
         } />
         <Route path="/announcements" element={<Announcements />} />
@@ -1226,15 +1240,27 @@ const HODDashboard = () => {
                         )}
 
                         {selectedTeam.fileUrl ? (
-                          <a 
-                            href={selectedTeam.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-all text-xs font-bold text-indigo-700"
-                          >
-                            <span>Proposal Document</span>
-                            <ExternalLink size={14} />
-                          </a>
+                          <div className="flex items-center gap-2 p-2 bg-indigo-50/70 border border-indigo-150 rounded-xl">
+                            <button 
+                              type="button"
+                              onClick={() => setViewerDoc({
+                                isOpen: true,
+                                fileUrl: selectedTeam.fileUrl,
+                                title: `${selectedTeam.title || 'Proposal Document'} (${selectedTeam.teamName || 'FYP Team'})`
+                              })}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 bg-white text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-all text-xs font-bold cursor-pointer"
+                            >
+                              <Eye size={13} /> View Doc
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => triggerDirectDownload(selectedTeam.fileUrl)}
+                              className="p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
+                              title="Download Proposal File"
+                            >
+                              <Download size={13} />
+                            </button>
+                          </div>
                         ) : (
                           <div className="p-3 bg-gray-50 border border-gray-100 text-gray-400 rounded-xl text-center text-xs font-medium italic">
                             No document file
@@ -1404,6 +1430,13 @@ const HODDashboard = () => {
           </div>
         )}
       </AnimatePresence>
+      {/* Document Viewer Modal */}
+      <DocumentViewerModal
+        isOpen={viewerDoc.isOpen}
+        onClose={() => setViewerDoc({ isOpen: false, fileUrl: '', title: '' })}
+        fileUrl={viewerDoc.fileUrl}
+        title={viewerDoc.title}
+      />
     </div>
   );
 };

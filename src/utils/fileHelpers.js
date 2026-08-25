@@ -1,3 +1,5 @@
+import { API_BASE_URL } from '../services/api.js';
+
 /**
  * Helper utilities for viewing and downloading files cleanly and reliably
  */
@@ -67,7 +69,8 @@ export const getFileViewUrl = (fileUrl = '') => {
     return fileUrl;
   }
   const rawName = extractRawFileName(fileUrl) || fileUrl;
-  return `/api/files/view?file=${encodeURIComponent(rawName)}`;
+  const base = API_BASE_URL || '';
+  return `${base}/api/files/view?file=${encodeURIComponent(rawName)}`;
 };
 
 export const getFileDownloadUrl = (fileUrl = '') => {
@@ -76,7 +79,8 @@ export const getFileDownloadUrl = (fileUrl = '') => {
     return fileUrl;
   }
   const rawName = extractRawFileName(fileUrl) || fileUrl;
-  return `/api/files/download?file=${encodeURIComponent(rawName)}`;
+  const base = API_BASE_URL || '';
+  return `${base}/api/files/download?file=${encodeURIComponent(rawName)}`;
 };
 
 export const triggerDirectDownload = async (fileUrl, customName = '') => {
@@ -110,6 +114,13 @@ export const triggerDirectDownload = async (fileUrl, customName = '') => {
       return;
     }
 
+    const contentType = response.headers.get('content-type') || '';
+    // If response was an html page (SPA fallback error), fallback to direct link
+    if (contentType.includes('text/html') && !cleanName.endsWith('.html')) {
+      window.open(downloadUrl, '_blank');
+      return;
+    }
+
     const blob = await response.blob();
     const blobUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -120,7 +131,7 @@ export const triggerDirectDownload = async (fileUrl, customName = '') => {
     document.body.removeChild(link);
     setTimeout(() => {
       window.URL.revokeObjectURL(blobUrl);
-    }, 1500);
+    }, 2000);
   } catch (err) {
     console.error('Trigger direct download error:', err);
     const link = document.createElement('a');
@@ -132,4 +143,3 @@ export const triggerDirectDownload = async (fileUrl, customName = '') => {
     document.body.removeChild(link);
   }
 };
-

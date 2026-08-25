@@ -38,7 +38,7 @@ import dashboardRoutes from "./routes/dashboardRoutes.js";
 import assignmentRoutes from "./routes/assignmentRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import plagiarismRoutes from "./routes/plagiarismRoutes.js";
-import fileRoutes from "./routes/fileRoutes.js";
+import fileRoutes, { resolveUploadPath, getMimeType } from "./routes/fileRoutes.js";
 import recommender from "./utils/recommender.js";
 
 dotenv.config();
@@ -93,6 +93,27 @@ app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 // Serve uploads folder statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Uploads fallback middleware: if a requested file isn't directly on disk, resolve/synthesize it or return 404 JSON (NEVER return SPA index.html)
+app.use("/uploads", async (req, res, next) => {
+  const fileParam = req.path.replace(/^\/+/, '');
+  if (!fileParam) return res.status(404).json({ message: "No file specified" });
+  try {
+    const filePath = await resolveUploadPath(fileParam);
+    if (filePath && fs.existsSync(filePath)) {
+      const ext = path.extname(filePath);
+      const mimeType = getMimeType(ext);
+      const rawFileName = path.basename(filePath);
+      const cleanName = rawFileName.replace(/^\d+-/, '');
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(cleanName)}"`);
+      return res.sendFile(filePath);
+    }
+  } catch (err) {
+    console.error("Upload fallback error:", err);
+  }
+  return res.status(404).json({ message: "File not found on server" });
+});
 
 // Register API routes early so server is responsive immediately
 app.use("/api/auth", authRoutes);
@@ -303,7 +324,7 @@ async function startServer() {
       }));
 
       app.get("*", (req, res, next) => {
-        if (req.path.startsWith('/api')) return next();
+        if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return next();
         res.sendFile(path.join(distPath, "index.html"));
       });
     }

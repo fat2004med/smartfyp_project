@@ -29,6 +29,17 @@ const AnimatedSelect = ({ label, value, options, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  const uniqueOptions = useMemo(() => {
+    if (!Array.isArray(options)) return [];
+    const seen = new Set();
+    return options.filter(opt => {
+      const str = String(opt || '').trim();
+      if (!str || seen.has(str)) return false;
+      seen.add(str);
+      return true;
+    });
+  }, [options]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -70,21 +81,21 @@ const AnimatedSelect = ({ label, value, options, onChange }) => {
               <div className="px-2 pb-1 mb-1 border-b border-gray-50">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2">Select {label}</p>
               </div>
-              {options.map((option) => (
+              {uniqueOptions.map((option, idx) => (
                 <button
-                  key={option}
+                  key={`${label}-${option}-${idx}`}
                   onClick={() => {
                     onChange(option);
                     setIsOpen(false);
                   }}
                   className={`w-full text-left px-4 py-2.5 text-sm transition-all flex items-center justify-between group ${
-                    value === option 
+                    String(value) === String(option) 
                       ? 'text-blue-600 font-bold bg-blue-50/50' 
                       : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'
                   }`}
                 >
                   {option}
-                  {value === option && (
+                  {String(value) === String(option) && (
                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
                       <CheckCircle2 size={14} className="text-blue-500" />
                     </motion.div>
@@ -176,7 +187,7 @@ export const ProjectCard = ({ project, onViewDetails, index = 0 }) => {
         <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
           <div className="flex flex-col min-w-0">
             <div className="mb-2">
-              <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider leading-none mb-0.5 block">Group Team</span>
+              <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider leading-none mb-0.5 block">Team ID</span>
               <p className="text-xs text-indigo-600 font-extrabold truncate">{project.teamName || 'FYP Team'}</p>
             </div>
             <div>
@@ -271,8 +282,8 @@ export const ProjectModal = ({ project, onClose }) => {
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
                     <div className="flex items-center justify-between text-sm border-b border-gray-100/50 pb-2">
-                      <span className="text-gray-500">Team:</span>
-                      <span className="font-bold text-gray-900">{project.teamName || 'FYP Team'}</span>
+                      <span className="text-gray-500 font-medium">Team ID:</span>
+                      <span className="font-extrabold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-lg">{project.teamName || 'FYP Team'}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm border-b border-gray-100/50 pb-2">
                       <span className="text-gray-500">Supervisor:</span>
@@ -569,14 +580,28 @@ const Projects = () => {
     return () => { isMounted = false; };
   }, []);
 
-  const departments = ["All Departments", ...new Set(publicProjects.map(p => p.department?.name))].filter(Boolean);
+  const departments = useMemo(() => {
+    const raw = publicProjects.map(p => p.department?.name).filter(Boolean);
+    const unique = Array.from(new Set(raw.map(String)));
+    return ["All Departments", ...unique];
+  }, [publicProjects]);
+
   const technologies = useMemo(() => {
     const allTechs = publicProjects
       .filter(p => p.status === 'Completed' || p.status === 'Published')
-      .flatMap(p => p.technologies || []);
-    return ["All Technologies", ...new Set(allTechs)].filter(Boolean);
+      .flatMap(p => p.technologies || [])
+      .filter(Boolean);
+    const unique = Array.from(new Set(allTechs.map(String)));
+    return ["All Technologies", ...unique];
   }, [publicProjects]);
-  const years = ["All Years", ...new Set(publicProjects.map(p => p.year || p.academicYear))].filter(Boolean).sort();
+
+  const years = useMemo(() => {
+    const rawYears = publicProjects
+      .map(p => (p.year != null ? String(p.year) : (p.academicYear != null ? String(p.academicYear) : '')))
+      .filter(Boolean);
+    const unique = Array.from(new Set(rawYears)).sort();
+    return ["All Years", ...unique];
+  }, [publicProjects]);
 
   const filteredProjects = useMemo(() => {
     return publicProjects.filter(project => {

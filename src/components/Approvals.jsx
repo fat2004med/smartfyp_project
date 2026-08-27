@@ -94,21 +94,41 @@ const Approvals = () => {
                               s.status === 'Approved' ||
                               s.status === 'Rejected';
 
-        // For HOD: only final documentation
-        if (activeRole === 'HOD' && !isFinal) return;
+        // For HOD: show final documentation or submissions pending HOD
+        if (activeRole === 'HOD' && !isFinal && s.status !== 'Pending HOD') return;
 
-        // For Admin: ONLY final documentation submissions after approved by HOD
-        if (activeRole === 'Admin' && (!isFinal || !isHodApproved)) return;
+        // For Admin: ONLY final documentation submissions after approved by HOD, or pending Admin
+        if (activeRole === 'Admin' && (!isFinal || !isHodApproved) && s.status !== 'Pending Admin') return;
 
         let status = 'Pending';
         if (s.status === 'Approved') {
           status = 'Approved';
         } else if (s.status === 'Rejected') {
           status = 'Rejected';
-        } else if (activeRole === 'HOD' && (s.status === 'Pending Admin' || s.approvals?.some(a => a.role === 'HOD' && a.status === 'Approved'))) {
-          status = 'Approved';
-        } else if (activeRole === 'Supervisor' && (s.status === 'Pending HOD' || s.status === 'Pending Admin' || s.approvals?.some(a => a.role === 'Supervisor' && a.status === 'Approved'))) {
-          status = 'Approved';
+        } else if (activeRole === 'HOD') {
+          if (s.status === 'Pending HOD') {
+            status = 'Pending';
+          } else if (s.status === 'Pending Admin' || s.approvals?.some(a => a.role === 'HOD' && a.status === 'Approved')) {
+            status = 'Approved';
+          } else {
+            status = 'Pending';
+          }
+        } else if (activeRole === 'Supervisor') {
+          if (s.status === 'Pending Supervisor' || s.status === 'Pending' || s.status === 'Submitted') {
+            status = 'Pending';
+          } else if (s.status === 'Pending HOD' || s.status === 'Pending Admin' || s.approvals?.some(a => a.role === 'Supervisor' && a.status === 'Approved')) {
+            status = 'Approved';
+          } else {
+            status = 'Pending';
+          }
+        } else if (activeRole === 'Admin') {
+          if (s.status === 'Pending Admin') {
+            status = 'Pending';
+          } else if (s.status === 'Approved' || s.approvals?.some(a => a.role === 'Admin' && a.status === 'Approved')) {
+            status = 'Approved';
+          } else {
+            status = 'Pending';
+          }
         } else {
           status = 'Pending';
         }

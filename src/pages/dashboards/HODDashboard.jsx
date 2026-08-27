@@ -202,17 +202,18 @@ const DashboardOverview = ({ stats, statsData, supervisorStats, deptPerformance,
               ) : (
                 <>
                   {/* Category Status Banner */}
-                  {deptProjects.some(p => p.status === 'Proposed' && p.isApprovedBySupervisor && !p.isApprovedByHOD) && (
+                  {deptProjects.some(p => (p.status === 'Proposed' || p.status === 'Completed') && p.isApprovedBySupervisor && !p.isApprovedByHOD) && (
                     <div className="mb-2">
-                      <span className="text-[10px] uppercase font-black tracking-widest text-red-600 bg-red-50 border border-red-100 px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5">
-                        ⚠️ Action Required: Proposed Projects Seeking HOD Endorsement ({deptProjects.filter(p => p.status === 'Proposed' && p.isApprovedBySupervisor && !p.isApprovedByHOD).length})
+                      <span className="text-[10px] uppercase font-black tracking-widest text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5">
+                        ⚠️ Action Required: Projects Seeking HOD Review & Endorsement ({deptProjects.filter(p => (p.status === 'Proposed' || p.status === 'Completed') && p.isApprovedBySupervisor && !p.isApprovedByHOD).length})
                       </span>
                     </div>
                   )}
 
                   {deptProjects.map((proj, idx) => {
-                    const isPendingHOD = proj.status === 'Proposed' && proj.isApprovedBySupervisor && !proj.isApprovedByHOD;
-                    const isPendingSupervisor = proj.status === 'Proposed' && !proj.isApprovedBySupervisor;
+                    const isPendingHOD = (proj.status === 'Proposed' || proj.status === 'Completed') && proj.isApprovedBySupervisor && !proj.isApprovedByHOD;
+                    const isPendingSupervisor = (proj.status === 'Proposed' || proj.status === 'Completed') && !proj.isApprovedBySupervisor;
+                    const isPendingAdmin = (proj.status === 'Proposed' || proj.status === 'Completed') && proj.isApprovedBySupervisor && proj.isApprovedByHOD && !proj.isApprovedByAdmin;
                     
                     let statusLabel = 'Ongoing Development';
                     let statusColor = 'bg-blue-50 text-blue-700 border-blue-150';
@@ -222,6 +223,9 @@ const DashboardOverview = ({ stats, statsData, supervisorStats, deptPerformance,
                     } else if (isPendingSupervisor) {
                       statusLabel = 'Pending Advisor Sign-off';
                       statusColor = 'bg-stone-50 text-stone-600 border-stone-150';
+                    } else if (isPendingAdmin) {
+                      statusLabel = 'Pending Admin Approval';
+                      statusColor = 'bg-purple-50 text-purple-700 border-purple-150';
                     } else if (proj.status === 'Completed' || proj.status === 'Published') {
                       statusLabel = 'Completed / Final Viva';
                       statusColor = 'bg-emerald-50 text-emerald-700 border-emerald-150';

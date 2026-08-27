@@ -319,17 +319,15 @@ const ProjectSubmission = () => {
   const canReview = (status, doc) => {
     if (!status || status === 'Not Submitted' || status === 'Approved' || status === 'Rejected') return false;
     
-    // Check if the current user or active role has already reviewed this document
-    const currentUserId = user?._id || user?.id;
+    // Check if the current active role has already reviewed this document
     const hasAlreadyReviewed = doc?.approvals?.some(a => 
-      (a.role === activeRole || (a.approvedBy && (a.approvedBy._id || a.approvedBy).toString() === currentUserId?.toString())) &&
-      (a.status === 'Approved' || a.status === 'Rejected')
+      a.role === activeRole && (a.status === 'Approved' || a.status === 'Rejected')
     );
     if (hasAlreadyReviewed) return false;
 
     if (activeRole === 'Admin') {
       // In Admin dashboard, any unfinalized submission pending Admin can be reviewed
-      return ['Pending Admin', 'Pending'].includes(status) || doc?.isFinalDocumentation;
+      return ['Pending Admin', 'Pending'].includes(status) || (doc?.isFinalDocumentation && doc?.status === 'Pending Admin');
     }
     if (activeRole === 'HOD') return ['Pending HOD'].includes(status);
     if (activeRole === 'Supervisor') return ['Pending Supervisor', 'Pending', 'Submitted'].includes(status);
@@ -435,14 +433,14 @@ const ProjectSubmission = () => {
                       const currentUserId = user?._id || user?.id;
                       return !!(docSubmitterId && currentUserId && docSubmitterId.toString() === currentUserId.toString());
                     }
-                    if (activeRole === 'HOD') return s.isFinalDocumentation === true || s.phase === 'Final';
+                    if (activeRole === 'HOD') return s.isFinalDocumentation === true || s.phase === 'Final' || s.status === 'Pending HOD';
                     if (activeRole === 'Admin') {
                       const isFinal = s.isFinalDocumentation === true || s.phase === 'Final';
                       const isHodApproved = s.status === 'Pending Admin' || 
                                             s.approvals?.some(a => a.role === 'HOD' && a.status === 'Approved') ||
                                             s.status === 'Approved' ||
                                             s.status === 'Rejected';
-                      return isFinal && isHodApproved;
+                      return (isFinal && isHodApproved) || s.status === 'Pending Admin';
                     }
                     return true;
                   }).length === 0 ? (
@@ -473,14 +471,14 @@ const ProjectSubmission = () => {
                         const currentUserId = user?._id || user?.id;
                         return !!(docSubmitterId && currentUserId && docSubmitterId.toString() === currentUserId.toString());
                       }
-                      if (activeRole === 'HOD') return s.isFinalDocumentation === true || s.phase === 'Final';
+                      if (activeRole === 'HOD') return s.isFinalDocumentation === true || s.phase === 'Final' || s.status === 'Pending HOD';
                       if (activeRole === 'Admin') {
                         const isFinal = s.isFinalDocumentation === true || s.phase === 'Final';
                         const isHodApproved = s.status === 'Pending Admin' || 
                                               s.approvals?.some(a => a.role === 'HOD' && a.status === 'Approved') ||
                                               s.status === 'Approved' ||
                                               s.status === 'Rejected';
-                        return isFinal && isHodApproved;
+                        return (isFinal && isHodApproved) || s.status === 'Pending Admin';
                       }
                       return true;
                     }).map((doc) => {
@@ -703,10 +701,10 @@ const ProjectSubmission = () => {
                             </span>
                           )}
 
-                          {doc.status !== 'Approved' && doc.status !== 'Rejected' && doc.approvals?.some(a => a.role === activeRole || (a.approvedBy && (a.approvedBy._id || a.approvedBy).toString() === (user?._id || user?.id)?.toString())) && (
+                          {doc.status !== 'Approved' && doc.status !== 'Rejected' && doc.approvals?.some(a => a.role === activeRole && (a.status === 'Approved' || a.status === 'Rejected')) && (
                             <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs inline-flex items-center gap-1">
                               <Check size={13} className="text-blue-600" />
-                              {doc.approvals.find(a => a.role === activeRole || (a.approvedBy && (a.approvedBy._id || a.approvedBy).toString() === (user?._id || user?.id)?.toString()))?.status === 'Approved' ? 'Reviewed' : 'Evaluated'}
+                              {doc.approvals.find(a => a.role === activeRole)?.status === 'Approved' ? 'Reviewed' : 'Evaluated'}
                             </span>
                           )}
 

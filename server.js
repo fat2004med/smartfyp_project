@@ -59,22 +59,11 @@ import Assignment from "./models/Assignment.js";
 import Feedback from "./models/Feedback.js";
 import Template from "./models/Template.js";
 import SystemLog from "./models/SystemLog.js";
+import { seedCompleteData } from "./config/seedCompleteData.js";
 
 async function seedData() {
   try {
-    const existingUsersCount = await User.countDocuments({});
-    if (existingUsersCount === 0) {
-      const adminPassword = "adminp@ssword123";
-      await User.create({
-        name: "Global Admin",
-        email: "fat2004med@gmail.com",
-        password: adminPassword,
-        role: "Admin",
-        isFirstLogin: false,
-        isActive: true
-      });
-      console.log("✅ Initial Admin account initialized.");
-    }
+    await seedCompleteData();
   } catch (error) {
     console.error("Initialization error:", error);
   }

@@ -23,6 +23,7 @@ import { triggerDirectDownload } from '../utils/fileHelpers';
 const ReviewQueue = () => {
   const { user } = useAuth();
   const currentUserId = user?._id || user?.id;
+  const activeRole = localStorage.getItem('activeDashboardRole') || user?.role?.split(',')[0]?.trim() || '';
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedReview, setSelectedReview] = useState(null);
@@ -358,9 +359,9 @@ const ReviewQueue = () => {
                           Post Feedback Only
                         </button>
 
-                        {review.status === 'Approved' || review.status === 'Rejected' ? (
+                        {review.status === 'Approved' || review.status === 'Rejected' || (activeRole === 'Supervisor' && review.approvals?.some(a => a.role === 'Supervisor' && a.status === 'Approved')) || (activeRole === 'HOD' && review.approvals?.some(a => a.role === 'HOD' && a.status === 'Approved')) || (activeRole === 'Admin' && review.approvals?.some(a => a.role === 'Admin' && a.status === 'Approved')) ? (
                           <div className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-xl text-gray-600 border border-gray-200 font-bold text-xs select-none">
-                            <span>Status: {review.status}</span>
+                            <span>Status: {review.status === 'Pending HOD' && activeRole === 'Supervisor' ? 'Reviewed (Pending HOD)' : review.status === 'Pending Admin' && activeRole === 'HOD' ? 'Reviewed (Pending Admin)' : review.status}</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-3">

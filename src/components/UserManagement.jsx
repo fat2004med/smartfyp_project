@@ -924,7 +924,7 @@ const UserManagement = () => {
                       <input
                         type="text"
                         required
-                        value={temporaryPassword}
+                        value={temporaryPassword || ''}
                         onChange={(e) => setTemporaryPassword(e.target.value)}
                         placeholder="e.g. Password123!"
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-mono text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"

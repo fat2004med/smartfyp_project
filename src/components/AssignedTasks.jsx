@@ -205,7 +205,7 @@ const AssignedTasks = () => {
         <input 
           type="text"
           placeholder="Search tasks..."
-          value={searchQuery}
+          value={searchQuery || ''}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm shadow-sm"
         />
@@ -486,26 +486,16 @@ const AssignedTasks = () => {
                           </a>
                         )}
                         {selectedTask.submission.fileUrl && (
-                          <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-purple-100">
+                          <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-purple-100">
+                            <span className="text-xs font-bold text-gray-700 truncate mr-2">Attached File</span>
                             <button 
                               type="button"
-                              onClick={() => setViewerDoc({
-                                isOpen: true,
-                                fileUrl: selectedTask.submission.fileUrl,
-                                title: `${selectedTask.title} (Task Submission)`
-                              })}
-                              className="flex items-center gap-2 text-purple-600 hover:text-purple-800 font-bold text-sm flex-1 text-left cursor-pointer"
-                            >
-                              <Eye size={16} />
-                              View Attached File
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => triggerDirectDownload(selectedTask.submission.fileUrl)}
-                              className="p-1.5 text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
+                              onClick={() => triggerDirectDownload(selectedTask.submission.fileUrl, `${selectedTask.title} Submission`)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-xs shadow-2xs transition-colors cursor-pointer"
                               title="Download Attached File"
                             >
-                              <Download size={16} />
+                              <Download size={14} />
+                              Download File
                             </button>
                           </div>
                         )}

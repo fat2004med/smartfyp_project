@@ -183,7 +183,7 @@ const Contact = () => {
                         <input 
                           type="text" 
                           required
-                          value={formData.name}
+                          value={formData.name || ''}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           placeholder="John Doe"
                           disabled={isSubmitting}
@@ -195,7 +195,7 @@ const Contact = () => {
                         <input 
                           type="email" 
                           required
-                          value={formData.email}
+                          value={formData.email || ''}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           placeholder="john@example.com"
                           disabled={isSubmitting}
@@ -207,7 +207,7 @@ const Contact = () => {
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Subject</label>
                       <select 
-                        value={formData.subject}
+                        value={formData.subject || 'General Inquiry'}
                         onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                         disabled={isSubmitting}
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all appearance-none bg-white disabled:bg-gray-50 disabled:text-gray-400"
@@ -224,7 +224,7 @@ const Contact = () => {
                       <textarea 
                         rows="5" 
                         required
-                        value={formData.message}
+                        value={formData.message || ''}
                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                         placeholder="How can we help you?"
                         disabled={isSubmitting}

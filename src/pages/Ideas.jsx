@@ -158,7 +158,7 @@ const Ideas = () => {
                   <textarea
                     rows={3}
                     placeholder="e.g., smart energy savings in buildings or secure encryption on low power device"
-                    value={interest}
+                    value={interest || ''}
                     onChange={(e) => setInterest(e.target.value)}
                     className="w-full pl-3 pr-3 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm outline-none transition-all resize-none placeholder:text-gray-400"
                   />
@@ -188,7 +188,7 @@ const Ideas = () => {
                   Preferred Domain Filters
                 </label>
                 <select
-                  value={domain}
+                  value={domain || ''}
                   onChange={(e) => setDomain(e.target.value)}
                   className="w-full text-sm px-3 py-2.5 bg-white border border-gray-200 focus:border-blue-500 rounded-xl outline-none transition-all cursor-pointer"
                 >
@@ -210,7 +210,7 @@ const Ideas = () => {
                 <input
                   type="text"
                   placeholder="e.g., Python, PyTorch, React, ESP32"
-                  value={techStack}
+                  value={techStack || ''}
                   onChange={(e) => setTechStack(e.target.value)}
                   className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition-all"
                 />
@@ -226,7 +226,7 @@ const Ideas = () => {
                   type="range"
                   min="3"
                   max="12"
-                  value={limit}
+                  value={limit ?? 6}
                   onChange={(e) => setLimit(parseInt(e.target.value))}
                   className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                 />

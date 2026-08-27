@@ -133,7 +133,7 @@ const ReviewQueue = () => {
             type="text"
             placeholder="Search by group or document name..."
             className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-sm"
-            value={searchTerm}
+            value={searchTerm || ''}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
@@ -141,7 +141,7 @@ const ReviewQueue = () => {
           <Filter size={18} className="text-gray-400" />
           <select 
             className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium text-gray-700 text-sm"
-            value={filterStatus}
+            value={filterStatus || 'All'}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
             <option value="All">All Statuses</option>
@@ -281,29 +281,14 @@ const ReviewQueue = () => {
                           <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Actions</h5>
                           <div className="flex flex-wrap items-center gap-3">
                             {review.fileUrl && (
-                              <>
-                                <button 
-                                  type="button"
-                                  onClick={() => setViewerDoc({
-                                    isOpen: true,
-                                    fileUrl: review.fileUrl,
-                                    title: `${review.title || 'Submission Document'}${review.team?.name ? ` (${review.team.name})` : ''}`
-                                  })}
-                                  className="flex items-center justify-center gap-2 bg-blue-50 border border-blue-150 p-3 rounded-xl text-sm font-bold text-blue-700 hover:bg-blue-100 transition-all shadow-xs cursor-pointer flex-1"
-                                >
-                                  <Eye size={17} />
-                                  View Document
-                                </button>
-                                <button 
-                                  type="button"
-                                  onClick={() => triggerDirectDownload(review.fileUrl)}
-                                  className="flex items-center justify-center gap-2 bg-white border border-gray-200 p-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all shadow-xs cursor-pointer"
-                                  title="Download File"
-                                >
-                                  <Download size={17} />
-                                  Download
-                                </button>
-                              </>
+                              <button 
+                                type="button"
+                                onClick={() => triggerDirectDownload(review.fileUrl, review.title || review.team?.name || 'Submission Document')}
+                                className="flex items-center justify-center gap-2 bg-blue-600 border border-blue-600 p-3 rounded-xl text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-xs cursor-pointer flex-1"
+                              >
+                                <Download size={17} />
+                                Download Document
+                              </button>
                             )}
                             {review.link && (
                               <a 
@@ -325,7 +310,7 @@ const ReviewQueue = () => {
                         <textarea 
                           className="w-full bg-white border border-gray-200 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium min-h-[100px]"
                           placeholder="Provide feedback to the team (required for rejection)..."
-                          value={feedbackText}
+                          value={feedbackText || ''}
                           onChange={(e) => setFeedbackText(e.target.value)}
                         />
                       </div>
@@ -337,7 +322,7 @@ const ReviewQueue = () => {
                             type="number"
                             placeholder="e.g. 85"
                             className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold"
-                            value={reviewScore}
+                            value={reviewScore || ''}
                             onChange={(e) => setReviewScore(e.target.value)}
                           />
                         </div>
@@ -347,7 +332,7 @@ const ReviewQueue = () => {
                             type="text"
                             placeholder="e.g. A, B+"
                             className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold"
-                            value={reviewGrade}
+                            value={reviewGrade || ''}
                             onChange={(e) => setReviewGrade(e.target.value)}
                           />
                         </div>

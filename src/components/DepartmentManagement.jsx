@@ -197,7 +197,7 @@ const DepartmentManagement = () => {
         <input 
           type="text"
           placeholder="Search departments or HODs..."
-          value={searchQuery}
+          value={searchQuery || ''}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
         />

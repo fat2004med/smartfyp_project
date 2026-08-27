@@ -330,7 +330,7 @@ const SystemLogs = () => {
             id="search-logs-input"
             type="text"
             placeholder="Search events, users, or details..."
-            value={searchQuery}
+            value={searchQuery || ''}
             onChange={(e) => {
               setSearchQuery(e.target.value);
               setCurrentPage(1);

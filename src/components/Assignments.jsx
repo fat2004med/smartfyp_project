@@ -420,7 +420,7 @@ const Assignments = () => {
           <input 
             type="text"
             placeholder="Search assignments..."
-            value={searchQuery}
+            value={searchQuery || ''}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
           />
@@ -652,7 +652,7 @@ const Assignments = () => {
                     required
                     type="text"
                     placeholder="e.g., Final Documentation Phase 1"
-                    value={newAssignment.title}
+                    value={newAssignment.title || ''}
                     onChange={(e) => setNewAssignment({...newAssignment, title: e.target.value})}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   />
@@ -664,7 +664,7 @@ const Assignments = () => {
                     required
                     rows="3"
                     placeholder="Provide detailed instructions..."
-                    value={newAssignment.description}
+                    value={newAssignment.description || ''}
                     onChange={(e) => setNewAssignment({...newAssignment, description: e.target.value})}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
                   />
@@ -716,7 +716,7 @@ const Assignments = () => {
                     <input 
                       required
                       type="date"
-                      value={newAssignment.startDate}
+                      value={newAssignment.startDate || ''}
                       onChange={(e) => setNewAssignment({...newAssignment, startDate: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                     />
@@ -726,7 +726,7 @@ const Assignments = () => {
                     <input 
                       required
                       type="date"
-                      value={newAssignment.endDate}
+                      value={newAssignment.endDate || ''}
                       onChange={(e) => setNewAssignment({...newAssignment, endDate: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                     />
@@ -836,7 +836,7 @@ const Assignments = () => {
                     <input 
                       type="url"
                       placeholder="e.g., GitHub Repository Link"
-                      value={submissionData.link}
+                      value={submissionData.link || ''}
                       onChange={(e) => setSubmissionData({...submissionData, link: e.target.value})}
                       className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                     />
@@ -943,28 +943,14 @@ const Assignments = () => {
                           </div>
                         </div>
                         {getUserSubmission(selectedAssignment).fileUrl && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setViewerDoc({
-                                isOpen: true,
-                                fileUrl: getUserSubmission(selectedAssignment).fileUrl,
-                                title: `${selectedAssignment.title} (Your Submission)`
-                              })}
-                              className="bg-white hover:bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg text-blue-700 font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                            >
-                              <Eye size={14} />
-                              View Doc
-                            </button>
-                            <button 
-                              type="button"
-                              onClick={() => triggerDirectDownload(getUserSubmission(selectedAssignment).fileUrl)}
-                              className="bg-white hover:bg-gray-100 border border-gray-200 p-2 rounded-lg text-gray-700 transition-all shadow-xs cursor-pointer"
-                              title="Download Submission File"
-                            >
-                              <Download size={14} />
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => triggerDirectDownload(getUserSubmission(selectedAssignment).fileUrl, `${selectedAssignment.title} Submission`)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                          >
+                            <Download size={14} />
+                            Download Submitted Doc
+                          </button>
                         )}
                       </div>
                       
@@ -1027,27 +1013,14 @@ const Assignments = () => {
                             <div className="flex items-center justify-between gap-4">
                                <div className="flex items-center gap-2">
                                   {sub.fileUrl && (
-                                    <div className="flex items-center gap-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => setViewerDoc({
-                                          isOpen: true,
-                                          fileUrl: sub.fileUrl,
-                                          title: `${selectedAssignment.title} - ${sub.student?.name || 'Student'}`
-                                        })}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg text-xs font-bold text-blue-700 transition-colors border border-blue-150 shadow-xs cursor-pointer"
-                                      >
-                                        <Eye size={13} /> View Doc
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => triggerDirectDownload(sub.fileUrl)}
-                                        className="p-1.5 bg-white hover:bg-gray-100 rounded-lg text-xs font-bold text-gray-700 transition-colors border border-gray-200 shadow-xs cursor-pointer"
-                                        title="Download File"
-                                      >
-                                        <Download size={13} />
-                                      </button>
-                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => triggerDirectDownload(sub.fileUrl, `${selectedAssignment.title} - ${sub.student?.name || 'Student'}`)}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-bold text-white transition-colors shadow-xs cursor-pointer"
+                                      title="Download Submission File"
+                                    >
+                                      <Download size={13} /> Download Doc
+                                    </button>
                                   )}
                                   {sub.link && (
                                     <a href={sub.link} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-gray-600 hover:text-blue-600 transition-colors border border-gray-200 shadow-sm">
@@ -1183,7 +1156,7 @@ const Assignments = () => {
                       <textarea 
                         rows="3"
                         placeholder="What do you think of this work?"
-                        value={reviewData.feedback}
+                        value={reviewData.feedback || ''}
                         onChange={(e) => setReviewData({...reviewData, feedback: e.target.value})}
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none italic"
                       />
@@ -1197,7 +1170,7 @@ const Assignments = () => {
                       <input 
                         type="text"
                         placeholder="e.g., A, 85/100, Good"
-                        value={reviewData.grade}
+                        value={reviewData.grade || ''}
                         onChange={(e) => setReviewData({...reviewData, grade: e.target.value})}
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold"
                       />

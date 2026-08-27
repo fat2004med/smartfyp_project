@@ -272,24 +272,14 @@ const DashboardOverview = ({ stats, statsData, supervisorStats, deptPerformance,
                         {/* Interactive Actions Grid */}
                         <div className="flex items-center gap-2 shrink-0">
                           {proj.fileUrl ? (
-                            <div className="flex items-center gap-1.5">
-                              <button 
-                                type="button"
-                                onClick={() => onViewDoc ? onViewDoc(proj.fileUrl, `${proj.title || 'Proposal'} (${proj.teamName || 'FYP Team'})`) : triggerDirectDownload(proj.fileUrl)}
-                                className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-black tracking-tight flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
-                                title="View proposal document"
-                              >
-                                <Eye size={13} /> Doc
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => triggerDirectDownload(proj.fileUrl)}
-                                className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                                title="Download Proposal File"
-                              >
-                                <Download size={13} />
-                              </button>
-                            </div>
+                            <button 
+                              type="button"
+                              onClick={() => triggerDirectDownload(proj.fileUrl, `${proj.title || 'Proposal'}`)}
+                              className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-black tracking-tight flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                              title="Download original proposal document"
+                            >
+                              <Download size={13} /> Download Doc
+                            </button>
                           ) : (
                             <span className="text-[10px] font-bold text-gray-400 italic bg-gray-50 px-2.5 py-1.5 rounded-xl border border-gray-100">
                               No Doc
@@ -916,7 +906,7 @@ const HODDashboard = () => {
             allProjects={allProjects}
             onViewSupervisorTeams={(sup) => setSelectedSupervisor(sup)}
             onViewProjectDetails={(proj) => setSelectedTeam(proj)}
-            onViewDoc={(fileUrl, title) => setViewerDoc({ isOpen: true, fileUrl, title })}
+            onViewDoc={(fileUrl, title) => triggerDirectDownload(fileUrl, title)}
           />
         } />
         <Route path="/announcements" element={<Announcements />} />
@@ -1240,27 +1230,14 @@ const HODDashboard = () => {
                         )}
 
                         {selectedTeam.fileUrl ? (
-                          <div className="flex items-center gap-2 p-2 bg-indigo-50/70 border border-indigo-150 rounded-xl">
-                            <button 
-                              type="button"
-                              onClick={() => setViewerDoc({
-                                isOpen: true,
-                                fileUrl: selectedTeam.fileUrl,
-                                title: `${selectedTeam.title || 'Proposal Document'} (${selectedTeam.teamName || 'FYP Team'})`
-                              })}
-                              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 bg-white text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-all text-xs font-bold cursor-pointer"
-                            >
-                              <Eye size={13} /> View Doc
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => triggerDirectDownload(selectedTeam.fileUrl)}
-                              className="p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
-                              title="Download Proposal File"
-                            >
-                              <Download size={13} />
-                            </button>
-                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => triggerDirectDownload(selectedTeam.fileUrl, `${selectedTeam.title || 'Proposal Document'} (${selectedTeam.teamName || 'FYP Team'})`)}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer"
+                            title="Download Proposal Document"
+                          >
+                            <Download size={14} /> Download Proposal Doc
+                          </button>
                         ) : (
                           <div className="p-3 bg-gray-50 border border-gray-100 text-gray-400 rounded-xl text-center text-xs font-medium italic">
                             No document file

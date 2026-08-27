@@ -29,8 +29,10 @@ export const getTemplateById = async (req, res) => {
 
 export const createTemplate = async (req, res) => {
   try {
+    const fileUrl = req.file ? `/uploads/${req.file.filename}` : req.body.fileUrl;
     const template = await Template.create({
       ...req.body,
+      fileUrl: fileUrl || req.body.fileUrl,
       uploader: req.user._id
     });
     res.status(201).json(template);
@@ -43,7 +45,11 @@ export const updateTemplate = async (req, res) => {
   try {
     const template = await Template.findById(req.params.id);
     if (template) {
-      Object.assign(template, req.body);
+      const updateData = { ...req.body };
+      if (req.file) {
+        updateData.fileUrl = `/uploads/${req.file.filename}`;
+      }
+      Object.assign(template, updateData);
       const updatedTemplate = await template.save();
       res.json(updatedTemplate);
     } else {

@@ -265,7 +265,7 @@ const PlagiarismChecker = () => {
                   min="0.10"
                   max="0.90"
                   step="0.05"
-                  value={threshold}
+                  value={threshold ?? 0.4}
                   onChange={(e) => setThreshold(parseFloat(e.target.value))}
                   className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                 />
@@ -537,7 +537,7 @@ const PlagiarismChecker = () => {
                 <input
                   type="text"
                   required
-                  value={newSourceTitle}
+                  value={newSourceTitle || ''}
                   onChange={(e) => setNewSourceTitle(e.target.value)}
                   placeholder="e.g. Project Alpha Final Documentation"
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -549,7 +549,7 @@ const PlagiarismChecker = () => {
                 <textarea
                   required
                   rows={6}
-                  value={newSourceContent}
+                  value={newSourceContent || ''}
                   onChange={(e) => setNewSourceContent(e.target.value)}
                   placeholder="Paste documentation text, abstract, or chapter sections here..."
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"

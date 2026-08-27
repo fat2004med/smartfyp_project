@@ -625,7 +625,7 @@ const Announcements = () => {
                     type="text"
                     required
                     placeholder="Enter announcement title"
-                    value={newAnnouncement.title}
+                    value={newAnnouncement.title || ''}
                     onChange={(e) => setNewAnnouncement({...newAnnouncement, title: e.target.value})}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   />
@@ -635,7 +635,7 @@ const Announcements = () => {
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold text-gray-700">Type</label>
                     <select 
-                      value={newAnnouncement.category}
+                      value={newAnnouncement.category || 'General'}
                       onChange={(e) => setNewAnnouncement({...newAnnouncement, category: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                     >
@@ -648,7 +648,7 @@ const Announcements = () => {
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold text-gray-700">Priority</label>
                     <select 
-                      value={newAnnouncement.priority}
+                      value={newAnnouncement.priority || 'Low'}
                       onChange={(e) => setNewAnnouncement({...newAnnouncement, priority: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                     >
@@ -667,12 +667,12 @@ const Announcements = () => {
                         <div 
                           onClick={() => toggleTarget(role)}
                           className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${
-                            newAnnouncement.targetRoles.includes(role) 
+                            (newAnnouncement.targetRoles || []).includes(role) 
                               ? 'bg-blue-600 border-blue-600 text-white' 
                               : 'bg-white border-gray-300 group-hover:border-blue-400'
                           }`}
                         >
-                          {newAnnouncement.targetRoles.includes(role) && <CheckCircle2 size={12} />}
+                          {(newAnnouncement.targetRoles || []).includes(role) && <CheckCircle2 size={12} />}
                         </div>
                         <span className="text-xs text-gray-600">{role}</span>
                       </label>
@@ -686,7 +686,7 @@ const Announcements = () => {
                     required
                     rows={4}
                     placeholder="Enter announcement description"
-                    value={newAnnouncement.description}
+                    value={newAnnouncement.description || ''}
                     onChange={(e) => setNewAnnouncement({...newAnnouncement, description: e.target.value})}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
                   />
@@ -696,7 +696,7 @@ const Announcements = () => {
                   <label className="text-sm font-bold text-gray-700">Expiry Date (Optional)</label>
                   <input 
                     type="datetime-local"
-                    value={newAnnouncement.expiryDate}
+                    value={newAnnouncement.expiryDate || ''}
                     onChange={(e) => setNewAnnouncement({...newAnnouncement, expiryDate: e.target.value})}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   />

@@ -220,7 +220,7 @@ const Login = () => {
                   <input 
                     type="email" 
                     placeholder="Email Address"
-                    value={email}
+                    value={email || ''}
                     onChange={(e) => {
                       setEmail(e.target.value);
                       if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: null }));
@@ -237,7 +237,7 @@ const Login = () => {
                   <input 
                     type={showPassword ? "text" : "password"} 
                     placeholder="Password"
-                    value={password}
+                    value={password || ''}
                     onChange={(e) => {
                       setPassword(e.target.value);
                       if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: null }));

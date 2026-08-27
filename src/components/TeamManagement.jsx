@@ -601,7 +601,7 @@ const TeamManagement = () => {
                     <input 
                       type="checkbox"
                       id="isLiveLinkPublic"
-                      checked={newTeam.isLiveLinkPublic}
+                      checked={newTeam.isLiveLinkPublic || false}
                       onChange={(e) => setNewTeam({...newTeam, isLiveLinkPublic: e.target.checked})}
                       className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                     />
@@ -839,27 +839,14 @@ const TeamManagement = () => {
                         )}
 
                         {selectedTeam.fileUrl ? (
-                          <div className="flex items-center gap-2 p-2 bg-indigo-50/70 border border-indigo-150 rounded-xl">
-                            <button 
-                              type="button"
-                              onClick={() => setViewerDoc({
-                                isOpen: true,
-                                fileUrl: selectedTeam.fileUrl,
-                                title: `${selectedTeam.name || selectedTeam.teamName || 'Proposal Document'}`
-                              })}
-                              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-white text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-all text-xs font-bold cursor-pointer"
-                            >
-                              <Eye size={14} /> View Doc
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => triggerDirectDownload(selectedTeam.fileUrl)}
-                              className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
-                              title="Download Proposal File"
-                            >
-                              <Download size={14} />
-                            </button>
-                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => triggerDirectDownload(selectedTeam.fileUrl, `${selectedTeam.name || selectedTeam.teamName || 'Proposal Document'}`)}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer"
+                            title="Download Original Proposal Document"
+                          >
+                            <Download size={14} /> Download Proposal Doc
+                          </button>
                         ) : (
                           <div className="p-3 bg-gray-50 border border-gray-100 text-gray-400 rounded-xl text-center text-xs font-medium italic">
                             No document file

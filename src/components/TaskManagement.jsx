@@ -245,14 +245,14 @@ const TaskManagement = () => {
           <input 
             type="text"
             placeholder="Search tasks by title or assignee..."
-            value={searchQuery}
+            value={searchQuery || ''}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm shadow-sm"
           />
         </div>
         <div className="flex gap-2">
           <select 
-            value={statusFilter}
+            value={statusFilter || 'All'}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="flex-1 bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm font-medium text-gray-600 outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
           >
@@ -589,28 +589,15 @@ const TaskManagement = () => {
                     {selectedTask.submission?.fileUrl && (
                       <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Attached File</p>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            type="button"
-                            onClick={() => setViewerDoc({
-                              isOpen: true,
-                              fileUrl: selectedTask.submission.fileUrl,
-                              title: `${selectedTask.title} (Submission File)`
-                            })}
-                            className="text-purple-600 hover:text-purple-800 font-bold text-xs flex items-center gap-1.5 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-xl border border-purple-100 transition-all cursor-pointer"
-                          >
-                            <Eye size={13} />
-                            View
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => triggerDirectDownload(selectedTask.submission.fileUrl)}
-                            title="Direct Download"
-                            className="text-gray-600 hover:text-gray-900 font-bold text-xs flex items-center gap-1 bg-white hover:bg-gray-100 px-2 py-1.5 rounded-xl border border-gray-200 transition-all cursor-pointer shadow-xs"
-                          >
-                            <Download size={13} />
-                          </button>
-                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => triggerDirectDownload(selectedTask.submission.fileUrl, `${selectedTask.title} Submission File`)}
+                          className="text-white font-bold text-xs flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-xs"
+                          title="Download Original File"
+                        >
+                          <Download size={13} />
+                          Download Attached File
+                        </button>
                       </div>
                     )}
                     <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
@@ -753,26 +740,16 @@ const TaskManagement = () => {
                           </a>
                         )}
                         {selectedTask.submission.fileUrl && (
-                          <div className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-purple-100">
+                          <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-purple-100">
+                            <span className="text-xs font-bold text-gray-700 truncate mr-2">Attached File</span>
                             <button 
                               type="button"
-                              onClick={() => setViewerDoc({
-                                isOpen: true,
-                                fileUrl: selectedTask.submission.fileUrl,
-                                title: `${selectedTask.title} (Attached File)`
-                              })}
-                              className="flex items-center gap-2 text-purple-600 hover:text-purple-800 transition-all font-bold text-xs flex-1 text-left cursor-pointer"
-                            >
-                              <Eye size={14} />
-                              View Attached File
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => triggerDirectDownload(selectedTask.submission.fileUrl)}
-                              className="p-1 text-gray-500 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
+                              onClick={() => triggerDirectDownload(selectedTask.submission.fileUrl, `${selectedTask.title} Submission File`)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-xs shadow-2xs transition-colors cursor-pointer"
                               title="Download Attached File"
                             >
-                              <Download size={14} />
+                              <Download size={13} />
+                              Download File
                             </button>
                           </div>
                         )}

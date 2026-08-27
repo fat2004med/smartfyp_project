@@ -302,27 +302,14 @@ export const ProjectModal = ({ project, onClose }) => {
                     {project.fileUrl && (
                       <div className="flex items-center justify-between text-sm sm:col-span-2 border-b border-gray-100/50 pb-2">
                         <span className="text-gray-500">Documentation / Proposal:</span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setViewerDoc({
-                              isOpen: true,
-                              fileUrl: project.fileUrl,
-                              title: `${project.title} (Documentation)`
-                            })}
-                            className="font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 cursor-pointer transition-all"
-                          >
-                            <Eye size={12} /> View Document
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => triggerDirectDownload(project.fileUrl)}
-                            className="font-bold text-gray-700 hover:text-gray-900 bg-gray-100 px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 cursor-pointer transition-all"
-                            title="Download document file"
-                          >
-                            <Download size={12} /> Download
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => triggerDirectDownload(project.fileUrl, `${project.title} (Documentation)`)}
+                          className="font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
+                          title="Download document file"
+                        >
+                          <Download size={13} /> Download Original Doc
+                        </button>
                       </div>
                     )}
                   </div>
@@ -652,7 +639,7 @@ const Projects = () => {
               <input 
                 type="text" 
                 placeholder="Search projects by title, description, team name, or technology..." 
-                value={searchQuery}
+                value={searchQuery || ''}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-14 pr-6 py-5 bg-white rounded-2xl shadow-xl shadow-blue-100/50 border-none focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 text-lg transition-all"
               />

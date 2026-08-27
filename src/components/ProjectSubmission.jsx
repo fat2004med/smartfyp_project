@@ -575,28 +575,15 @@ const ProjectSubmission = () => {
                       <td className="px-6 py-4">
                         {doc.fileUrl ? (
                           <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-2">
-                              <button 
-                                type="button"
-                                onClick={() => setViewerDoc({ 
-                                  isOpen: true, 
-                                  fileUrl: doc.fileUrl, 
-                                  title: `${doc.title || 'Submission Document'}${project?.title ? ` (${project.title})` : ''}` 
-                                })}
-                                className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-bold text-xs hover:underline decoration-2 underline-offset-4 cursor-pointer bg-blue-50/80 hover:bg-blue-100/80 px-2.5 py-1 rounded-lg border border-blue-150 transition-all"
-                              >
-                                <Eye size={13} />
-                                View Doc
-                              </button>
-                              <button 
-                                type="button"
-                                onClick={() => triggerDirectDownload(doc.fileUrl)}
-                                title="Direct Download File"
-                                className="flex items-center gap-1 text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
-                              >
-                                <Download size={13} />
-                              </button>
-                            </div>
+                            <button 
+                              type="button"
+                              onClick={() => triggerDirectDownload(doc.fileUrl, `${doc.title || 'Submission Document'}${project?.title ? ` (${project.title})` : ''}`)}
+                              className="flex items-center gap-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 font-bold text-xs transition-all w-fit cursor-pointer shadow-2xs"
+                              title="Download Original Document"
+                            >
+                              <Download size={13} />
+                              Download Doc
+                            </button>
                             {doc.links?.length > 0 && (
                               <a href={doc.links[0]} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-indigo-500 hover:text-indigo-700 font-bold text-xs pl-0.5">
                                 <LinkIcon size={12} />
@@ -880,28 +867,15 @@ const ProjectSubmission = () => {
                       </p>
                       <div className="flex items-center gap-2">
                         {ver.fileUrl && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => setViewerDoc({
-                                isOpen: true,
-                                fileUrl: ver.fileUrl,
-                                title: `${historyDoc.title} (Version ${ver.version})`
-                              })}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                            >
-                              <Eye size={13} />
-                              View Document
-                            </button>
-                            <button 
-                              type="button"
-                              onClick={() => triggerDirectDownload(ver.fileUrl)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                            >
-                              <Download size={13} />
-                              Download
-                            </button>
-                          </>
+                          <button
+                            type="button"
+                            onClick={() => triggerDirectDownload(ver.fileUrl, `${historyDoc.title} (v${ver.version})`)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                            title="Download Version Document"
+                          >
+                            <Download size={13} />
+                            Download Document
+                          </button>
                         )}
                         {ver.links?.length > 0 && (
                           <a 
@@ -971,23 +945,12 @@ const ProjectSubmission = () => {
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
-                        onClick={() => setViewerDoc({
-                          isOpen: true,
-                          fileUrl: selectedDoc.fileUrl,
-                          title: `${selectedDoc.title} (Review Preview)`
-                        })}
+                        onClick={() => triggerDirectDownload(selectedDoc.fileUrl, `${selectedDoc.title} Submission`)}
                         className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
-                      >
-                        <Eye size={13} />
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => triggerDirectDownload(selectedDoc.fileUrl)}
-                        className="p-1.5 bg-white hover:bg-gray-100 text-gray-700 rounded-xl border border-gray-200 text-xs font-bold transition-all shadow-xs cursor-pointer"
                         title="Download Document"
                       >
-                        <Download size={14} />
+                        <Download size={13} />
+                        Download Doc
                       </button>
                     </div>
                   </div>
@@ -1030,20 +993,20 @@ const ProjectSubmission = () => {
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Grade</label>
                       <input 
-                        type="text"
+                        type="text" 
                         placeholder="A, B+, etc."
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold"
-                        value={reviewForm.grade}
+                        value={reviewForm.grade || ''}
                         onChange={(e) => setReviewForm({...reviewForm, grade: e.target.value})}
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Score (0-100)</label>
                       <input 
-                        type="number"
+                        type="number" 
                         placeholder="85"
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold"
-                        value={reviewForm.score}
+                        value={reviewForm.score || ''}
                         onChange={(e) => setReviewForm({...reviewForm, score: e.target.value})}
                       />
                     </div>
@@ -1055,7 +1018,7 @@ const ProjectSubmission = () => {
                   <textarea 
                     className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-[1.5rem] outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm min-h-[120px] font-medium placeholder:text-gray-300"
                     placeholder="Provide constructive feedback for the team member..."
-                    value={reviewForm.feedback}
+                    value={reviewForm.feedback || ''}
                     onChange={(e) => setReviewForm({...reviewForm, feedback: e.target.value})}
                   />
                 </div>
@@ -1140,7 +1103,7 @@ const ProjectSubmission = () => {
                         type="url" 
                         placeholder="e.g., GitHub repo or drive link"
                         className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium"
-                        value={submissionForm.link}
+                        value={submissionForm.link || ''}
                         onChange={(e) => setSubmissionForm({...submissionForm, link: e.target.value})}
                       />
                     </div>
@@ -1151,7 +1114,7 @@ const ProjectSubmission = () => {
                     <textarea 
                       placeholder="Any specific note for the reviewer..."
                       className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium min-h-[80px]"
-                      value={submissionForm.comment}
+                      value={submissionForm.comment || ''}
                       onChange={(e) => setSubmissionForm({...submissionForm, comment: e.target.value})}
                     />
                   </div>
@@ -1210,7 +1173,7 @@ const ProjectSubmission = () => {
                       required
                       placeholder="e.g., Literature Review Final"
                       className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-bold"
-                      value={slotForm.title}
+                      value={slotForm.title || ''}
                       onChange={(e) => setSlotForm({...slotForm, title: e.target.value})}
                     />
                   </div>
@@ -1222,7 +1185,7 @@ const ProjectSubmission = () => {
                         type="date" 
                         required
                         className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-bold"
-                        value={slotForm.startDate}
+                        value={slotForm.startDate || ''}
                         onChange={(e) => setSlotForm({...slotForm, startDate: e.target.value})}
                       />
                     </div>
@@ -1232,7 +1195,7 @@ const ProjectSubmission = () => {
                         type="date" 
                         required
                         className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-bold"
-                        value={slotForm.endDate}
+                        value={slotForm.endDate || ''}
                         onChange={(e) => setSlotForm({...slotForm, endDate: e.target.value})}
                       />
                     </div>
@@ -1244,7 +1207,7 @@ const ProjectSubmission = () => {
                       type="url" 
                       placeholder="https://github.com/..."
                       className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium animate-none"
-                      value={slotForm.githubUrl}
+                      value={slotForm.githubUrl || ''}
                       onChange={(e) => setSlotForm({...slotForm, githubUrl: e.target.value})}
                     />
                   </div>

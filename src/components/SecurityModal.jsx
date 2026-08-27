@@ -152,7 +152,7 @@ const SecurityModal = ({ isOpen, onClose }) => {
                     <input 
                       type={showCurrent ? "text" : "password"}
                       required
-                      value={passwords.currentPassword}
+                      value={passwords.currentPassword || ''}
                       onChange={(e) => setPasswords({...passwords, currentPassword: e.target.value})}
                       placeholder="Enter current password"
                       className="w-full pl-4 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -174,7 +174,7 @@ const SecurityModal = ({ isOpen, onClose }) => {
                       <input 
                         type={showNew ? "text" : "password"}
                         required
-                        value={passwords.newPassword}
+                        value={passwords.newPassword || ''}
                         onChange={(e) => setPasswords({...passwords, newPassword: e.target.value})}
                         placeholder="Min 8 chars"
                         className="w-full pl-4 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -195,7 +195,7 @@ const SecurityModal = ({ isOpen, onClose }) => {
                       <input 
                         type={showConfirm ? "text" : "password"}
                         required
-                        value={passwords.confirmPassword}
+                        value={passwords.confirmPassword || ''}
                         onChange={(e) => setPasswords({...passwords, confirmPassword: e.target.value})}
                         placeholder="Repeat new"
                         className="w-full pl-4 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"

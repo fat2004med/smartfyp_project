@@ -39,6 +39,7 @@ const ProjectRecords = () => {
   const [editingProject, setEditingProject] = useState(null);
   const [projectForm, setProjectForm] = useState({
     title: '',
+    teamName: '',
     description: '',
     department: '',
     supervisor: '',
@@ -211,6 +212,7 @@ const ProjectRecords = () => {
     setEditingProject(null);
     setProjectForm({
       title: '',
+      teamName: '',
       description: '',
       department: '',
       supervisor: '',
@@ -239,6 +241,7 @@ const ProjectRecords = () => {
     setEditingProject(project);
     setProjectForm({
       title: project.title || '',
+      teamName: project.teamName || project.title || '',
       description: project.description || '',
       department: project.department?._id || project.department || '',
       supervisor: project.supervisor?._id || project.supervisor || '',
@@ -337,7 +340,7 @@ const ProjectRecords = () => {
             <input 
               type="text"
               placeholder="Search by title, team, supervisor, technology..."
-              value={searchQuery}
+              value={searchQuery || ''}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
             />
@@ -495,34 +498,18 @@ const ProjectRecords = () => {
                               
                               <div className="flex flex-wrap items-center gap-1.5">
                                 {doc.fileUrl && (
-                                  <div className="flex items-center gap-1">
-                                    <button 
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setViewerDoc({
-                                          isOpen: true,
-                                          fileUrl: doc.fileUrl,
-                                          title: `${doc.title || 'Documentation'} (${project.title})`
-                                        });
-                                      }}
-                                      className="flex items-center gap-1 text-[9px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-100 transition-all cursor-pointer"
-                                    >
-                                      <Eye size={10} />
-                                      View
-                                    </button>
-                                    <button 
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        triggerDirectDownload(doc.fileUrl);
-                                      }}
-                                      title="Download File"
-                                      className="flex items-center text-[9px] font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-200 transition-all cursor-pointer"
-                                    >
-                                      <Download size={10} />
-                                    </button>
-                                  </div>
+                                  <button 
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      triggerDirectDownload(doc.fileUrl, doc.title || project.title);
+                                    }}
+                                    className="flex items-center gap-1 text-[10px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded-lg border border-indigo-100 transition-all cursor-pointer shadow-2xs"
+                                    title="Download original document file"
+                                  >
+                                    <Download size={11} />
+                                    Download Doc
+                                  </button>
                                 )}
                                 
                                 {doc.links && doc.links.filter(Boolean).map((link, idx) => (
@@ -879,26 +866,19 @@ const ProjectRecords = () => {
                         )}
 
                         {selectedProject.fileUrl ? (
-                          <div className="flex items-center justify-between p-2 sm:p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl gap-2">
+                          <div className="flex items-center justify-between p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl gap-2">
+                            <span className="text-xs font-bold text-indigo-900 truncate flex-1 flex items-center gap-1.5">
+                              <FileText size={14} className="text-indigo-600 shrink-0" />
+                              Proposal Document
+                            </span>
                             <button
                               type="button"
-                              onClick={() => setViewerDoc({
-                                isOpen: true,
-                                fileUrl: selectedProject.fileUrl,
-                                title: `Proposal: ${selectedProject.title}`
-                              })}
-                              className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-900 transition-colors cursor-pointer truncate flex-1"
-                            >
-                              <Eye size={14} className="shrink-0 text-indigo-600" />
-                              <span className="truncate">Proposal Document</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => triggerDirectDownload(selectedProject.fileUrl)}
+                              onClick={() => triggerDirectDownload(selectedProject.fileUrl, `Proposal - ${selectedProject.title}`)}
                               title="Download Proposal Document"
-                              className="p-1.5 bg-white hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition-all cursor-pointer border border-indigo-200 shrink-0 shadow-2xs"
+                              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs shrink-0"
                             >
                               <Download size={13} />
+                              <span>Download</span>
                             </button>
                           </div>
                         ) : (
@@ -937,23 +917,12 @@ const ProjectRecords = () => {
                                 <div className="flex items-center gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => setViewerDoc({
-                                      isOpen: true,
-                                      fileUrl: doc.fileUrl,
-                                      title: `${doc.title} (${selectedProject.title})`
-                                    })}
-                                    className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-700 font-bold text-xs px-3 py-1.5 rounded-xl transition-all cursor-pointer"
-                                  >
-                                    <Eye size={13} />
-                                    View Doc
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => triggerDirectDownload(doc.fileUrl)}
-                                    className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                    onClick={() => triggerDirectDownload(doc.fileUrl, `${doc.title} (${selectedProject.title})`)}
+                                    className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow-xs transition-all cursor-pointer"
                                     title="Download Document"
                                   >
-                                    <Download size={14} />
+                                    <Download size={13} />
+                                    Download Doc
                                   </button>
                                 </div>
                               </div>
@@ -964,26 +933,14 @@ const ProjectRecords = () => {
                                     {doc.history.map((ver, vidx) => (
                                       <div key={vidx} className="flex items-center justify-between p-2 bg-gray-50 rounded-xl border border-gray-100/50">
                                         <span className="text-[11px] text-gray-600 font-bold">Version {ver.version}</span>
-                                        <div className="flex items-center gap-2">
-                                          <button
-                                            type="button"
-                                            onClick={() => setViewerDoc({
-                                              isOpen: true,
-                                              fileUrl: ver.fileUrl,
-                                              title: `${doc.title} (v${ver.version})`
-                                            })}
-                                            className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer"
-                                          >
-                                            View
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => triggerDirectDownload(ver.fileUrl)}
-                                            className="text-[10px] text-gray-500 hover:text-gray-900 font-bold cursor-pointer"
-                                          >
-                                            Download
-                                          </button>
-                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => triggerDirectDownload(ver.fileUrl, `${doc.title} v${ver.version}`)}
+                                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <Download size={11} />
+                                          Download
+                                        </button>
                                       </div>
                                     ))}
                                   </div>
@@ -1291,7 +1248,7 @@ const ProjectRecords = () => {
                     <input 
                       required
                       type="text" 
-                      value={projectForm.title}
+                      value={projectForm.title || ''}
                       onChange={(e) => setProjectForm({...projectForm, title: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     />
@@ -1301,7 +1258,7 @@ const ProjectRecords = () => {
                     <input 
                       required
                       type="text" 
-                      value={projectForm.teamName}
+                      value={projectForm.teamName || ''}
                       onChange={(e) => setProjectForm({...projectForm, teamName: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     />
@@ -1310,7 +1267,7 @@ const ProjectRecords = () => {
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Department</label>
                     <select 
                       required
-                      value={projectForm.department}
+                      value={projectForm.department || ''}
                       onChange={(e) => setProjectForm({...projectForm, department: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     >
@@ -1324,7 +1281,7 @@ const ProjectRecords = () => {
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Supervisor</label>
                     <select 
                       required
-                      value={projectForm.supervisor}
+                      value={projectForm.supervisor || ''}
                       onChange={(e) => setProjectForm({...projectForm, supervisor: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     >
@@ -1338,7 +1295,7 @@ const ProjectRecords = () => {
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">HOD</label>
                     <select 
                       required
-                      value={projectForm.hod}
+                      value={projectForm.hod || ''}
                       onChange={(e) => setProjectForm({...projectForm, hod: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     >
@@ -1352,7 +1309,7 @@ const ProjectRecords = () => {
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Team Leader</label>
                     <select 
                       required
-                      value={projectForm.teamLeader}
+                      value={projectForm.teamLeader || ''}
                       onChange={(e) => setProjectForm({...projectForm, teamLeader: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     >
@@ -1369,11 +1326,12 @@ const ProjectRecords = () => {
                         <label key={u._id} className="flex items-center gap-2 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-gray-100">
                           <input 
                             type="checkbox"
-                            checked={projectForm.members.includes(u._id)}
+                            checked={projectForm.members?.includes(u._id) || false}
                             onChange={(e) => {
+                              const currentMembers = projectForm.members || [];
                               const newMembers = e.target.checked 
-                                ? [...projectForm.members, u._id]
-                                : projectForm.members.filter(id => id !== u._id);
+                                ? [...currentMembers, u._id]
+                                : currentMembers.filter(id => id !== u._id);
                               setProjectForm({...projectForm, members: newMembers});
                             }}
                             className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
@@ -1390,7 +1348,7 @@ const ProjectRecords = () => {
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Description</label>
                   <textarea 
                     rows={3}
-                    value={projectForm.description}
+                    value={projectForm.description || ''}
                     onChange={(e) => setProjectForm({...projectForm, description: e.target.value})}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                   />
@@ -1401,7 +1359,7 @@ const ProjectRecords = () => {
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Academic Year</label>
                     <input 
                       type="text" 
-                      value={projectForm.academicYear}
+                      value={projectForm.academicYear || ''}
                       onChange={(e) => setProjectForm({...projectForm, academicYear: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     />
@@ -1411,7 +1369,7 @@ const ProjectRecords = () => {
                     <input 
                       type="text" 
                       placeholder="e.g. 2021-2025"
-                      value={projectForm.batch}
+                      value={projectForm.batch || ''}
                       onChange={(e) => setProjectForm({...projectForm, batch: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     />
@@ -1419,7 +1377,7 @@ const ProjectRecords = () => {
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Status</label>
                     <select 
-                      value={projectForm.status}
+                      value={projectForm.status || 'Proposed'}
                       onChange={(e) => setProjectForm({...projectForm, status: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     >
@@ -1433,7 +1391,7 @@ const ProjectRecords = () => {
                   <input 
                     type="text" 
                     placeholder="React, Node.js, MongoDB"
-                    value={projectForm.technologies}
+                    value={projectForm.technologies || ''}
                     onChange={(e) => setProjectForm({...projectForm, technologies: e.target.value})}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                   />
@@ -1445,7 +1403,7 @@ const ProjectRecords = () => {
                     <input 
                       type="url" 
                       placeholder="https://github.com/..."
-                      value={projectForm.githubLink}
+                      value={projectForm.githubLink || ''}
                       onChange={(e) => setProjectForm({...projectForm, githubLink: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     />
@@ -1455,7 +1413,7 @@ const ProjectRecords = () => {
                     <input 
                       type="url" 
                       placeholder="https://..."
-                      value={projectForm.fileUrl}
+                      value={projectForm.fileUrl || ''}
                       onChange={(e) => setProjectForm({...projectForm, fileUrl: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     />
@@ -1468,7 +1426,7 @@ const ProjectRecords = () => {
                     <input 
                       type="url" 
                       placeholder="https://..."
-                      value={projectForm.liveLink}
+                      value={projectForm.liveLink || ''}
                       onChange={(e) => setProjectForm({...projectForm, liveLink: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     />

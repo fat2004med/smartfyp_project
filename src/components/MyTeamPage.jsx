@@ -395,30 +395,15 @@ const MyTeamPage = () => {
               )}
 
               {project.fileUrl ? (
-                <div className="flex items-center gap-1.5 p-2 bg-blue-50 border border-blue-200 rounded-2xl">
-                  <button
-                    type="button"
-                    onClick={() => setViewerDoc({
-                      isOpen: true,
-                      fileUrl: project.fileUrl,
-                      title: `${project.title} (Proposal Document)`
-                    })}
-                    className="flex-1 flex items-center justify-between p-2 hover:bg-blue-100/70 rounded-xl transition-all text-xs font-bold text-blue-700 cursor-pointer"
-                  >
-                    <span className="flex items-center gap-1.5 truncate">
-                      <Eye size={14} className="text-blue-600 flex-shrink-0" />
-                      <span className="truncate">View Proposal</span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => triggerDirectDownload(project.fileUrl)}
-                    className="p-2 bg-white hover:bg-gray-100 rounded-xl text-gray-700 transition-all border border-gray-200 shadow-xs cursor-pointer flex-shrink-0"
-                    title="Download Proposal Document"
-                  >
-                    <Download size={14} />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => triggerDirectDownload(project.fileUrl, `${project.title} (Proposal Document)`)}
+                  className="w-full flex items-center justify-center gap-2 p-3 bg-blue-600 hover:bg-blue-700 rounded-2xl transition-all text-xs font-bold text-white shadow-xs cursor-pointer"
+                  title="Download Original Proposal Document"
+                >
+                  <Download size={15} />
+                  <span>Download Proposal Doc</span>
+                </button>
               ) : (
                 <div className="p-4 bg-gray-50 border border-gray-100 text-gray-400 rounded-2xl text-center text-xs font-medium italic">
                   No Proposal File Submitted
@@ -626,7 +611,7 @@ const MyTeamPage = () => {
                 <div className="space-y-1.5">
                   <label className="text-xs font-black text-gray-500 uppercase tracking-widest block">Project Abstract & Description</label>
                   <textarea
-                    value={updateForm.description}
+                    value={updateForm.description || ''}
                     onChange={(e) => setUpdateForm({ ...updateForm, description: e.target.value })}
                     className="w-full text-sm font-semibold text-gray-705 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 transition-colors p-4 min-h-[100px]"
                     placeholder="Enter short abstract or specifications about your project..."
@@ -638,7 +623,7 @@ const MyTeamPage = () => {
                 <div className="space-y-1.5">
                   <label className="text-xs font-black text-gray-550 uppercase tracking-widest block">Deliverables & Outcomes</label>
                   <textarea
-                    value={updateForm.outcomes}
+                    value={updateForm.outcomes || ''}
                     onChange={(e) => setUpdateForm({ ...updateForm, outcomes: e.target.value })}
                     className="w-full text-sm font-semibold text-gray-705 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 transition-colors p-4 min-h-[80px]"
                     placeholder="Enter key deliverables or targets..."
@@ -651,7 +636,7 @@ const MyTeamPage = () => {
                     <label className="text-xs font-black text-gray-550 uppercase tracking-widest block">Technologies (Comma separated)</label>
                     <input
                       type="text"
-                      value={updateForm.technologies}
+                      value={updateForm.technologies || ''}
                       onChange={(e) => setUpdateForm({ ...updateForm, technologies: e.target.value })}
                       className="w-full text-sm font-semibold text-gray-705 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 transition-colors p-3.5"
                       placeholder="React, Node.js, TensorFlow"
@@ -661,7 +646,7 @@ const MyTeamPage = () => {
                     <label className="text-xs font-black text-gray-550 uppercase tracking-widest block">Program Tags (Comma separated)</label>
                     <input
                       type="text"
-                      value={updateForm.tags}
+                      value={updateForm.tags || ''}
                       onChange={(e) => setUpdateForm({ ...updateForm, tags: e.target.value })}
                       className="w-full text-sm font-semibold text-gray-705 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 transition-colors p-3.5"
                       placeholder="FYP-1, Web, AI"
@@ -677,7 +662,7 @@ const MyTeamPage = () => {
                     <label className="text-xs font-black text-gray-550 uppercase tracking-widest block">GitHub Repository URL</label>
                     <input
                       type="url"
-                      value={updateForm.githubLink}
+                      value={updateForm.githubLink || ''}
                       onChange={(e) => setUpdateForm({ ...updateForm, githubLink: e.target.value })}
                       className="w-full text-sm font-semibold text-gray-705 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 transition-colors p-3.5"
                       placeholder="https://github.com/..."
@@ -688,7 +673,7 @@ const MyTeamPage = () => {
                     <label className="text-xs font-black text-gray-550 uppercase tracking-widest block">Live Demo / Deployment link</label>
                     <input
                       type="url"
-                      value={updateForm.liveLink}
+                      value={updateForm.liveLink || ''}
                       onChange={(e) => setUpdateForm({ ...updateForm, liveLink: e.target.value })}
                       className="w-full text-sm font-semibold text-gray-705 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 transition-colors p-3.5"
                       placeholder="https://..."
@@ -699,7 +684,7 @@ const MyTeamPage = () => {
                     <label className="text-xs font-black text-gray-550 uppercase tracking-widest block">Latest Document Link File (Latest PDF Proposal)</label>
                     <input
                       type="url"
-                      value={updateForm.fileUrl}
+                      value={updateForm.fileUrl || ''}
                       onChange={(e) => setUpdateForm({ ...updateForm, fileUrl: e.target.value })}
                       className="w-full text-sm font-semibold text-gray-705 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 transition-colors p-3.5"
                       placeholder="https://drive.google.com/..."

@@ -107,7 +107,7 @@ const Feedback = () => {
           <input 
             type="text"
             placeholder="Search feedback by project, person or keywords..."
-            value={searchQuery}
+            value={searchQuery || ''}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-12 pr-4 py-3.5 sm:py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm shadow-sm"
           />

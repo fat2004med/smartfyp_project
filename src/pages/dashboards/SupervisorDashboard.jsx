@@ -213,7 +213,7 @@ const DashboardOverview = ({ stats, monthlyTrend, reviews = [], projects = [], o
                           <div>
                             <label className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Comments / Feedback</label>
                             <textarea 
-                              value={reviewFeedback}
+                              value={reviewFeedback || ''}
                               onChange={(e) => setReviewFeedback(e.target.value)}
                               placeholder="Add helpful mentoring commentary..."
                               rows={2}
@@ -228,7 +228,7 @@ const DashboardOverview = ({ stats, monthlyTrend, reviews = [], projects = [], o
                                 type="number"
                                 min="0"
                                 max="100"
-                                value={reviewScore}
+                                value={reviewScore || ''}
                                 onChange={(e) => setReviewScore(e.target.value)}
                                 placeholder="80"
                                 className="w-full mt-1 px-3 py-1.5 bg-white text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
@@ -237,7 +237,7 @@ const DashboardOverview = ({ stats, monthlyTrend, reviews = [], projects = [], o
                             <div>
                               <label className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Grade</label>
                               <select
-                                value={reviewGrade}
+                                value={reviewGrade || 'A'}
                                 onChange={(e) => setReviewGrade(e.target.value)}
                                 className="w-full mt-1 px-3 py-1.5 bg-white text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-700"
                               >

@@ -349,7 +349,7 @@ const SupervisorManagement = () => {
                         type="text"
                         required
                         placeholder="Enter full name"
-                        value={newSupervisor.name}
+                        value={newSupervisor.name || ''}
                         onChange={(e) => setNewSupervisor({...newSupervisor, name: e.target.value})}
                         className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
                       />
@@ -364,7 +364,7 @@ const SupervisorManagement = () => {
                         type="email"
                         required
                         placeholder="Enter email address"
-                        value={newSupervisor.email}
+                        value={newSupervisor.email || ''}
                         onChange={(e) => setNewSupervisor({...newSupervisor, email: e.target.value})}
                         className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
                       />
@@ -379,7 +379,7 @@ const SupervisorManagement = () => {
                         type="text"
                         required
                         placeholder="e.g. Machine Learning, Cloud Computing"
-                        value={newSupervisor.interests}
+                        value={newSupervisor.interests || ''}
                         onChange={(e) => setNewSupervisor({...newSupervisor, interests: e.target.value})}
                         className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
                       />
@@ -392,7 +392,7 @@ const SupervisorManagement = () => {
                       <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                       <select 
                         required
-                        value={newSupervisor.department}
+                        value={newSupervisor.department || ''}
                         onChange={(e) => setNewSupervisor({...newSupervisor, department: e.target.value})}
                         disabled={currentUser?.role !== 'Admin'}
                         className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none disabled:bg-gray-100 disabled:opacity-75 disabled:cursor-not-allowed text-sm font-medium cursor-pointer"

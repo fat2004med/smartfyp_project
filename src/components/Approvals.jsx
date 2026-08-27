@@ -251,7 +251,7 @@ const Approvals = () => {
           <input 
             type="text"
             placeholder="Search by title, team, or supervisor..."
-            value={searchQuery}
+            value={searchQuery || ''}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm shadow-sm font-medium"
           />
@@ -302,33 +302,17 @@ const Approvals = () => {
                       <Clock size={14} /> {approval.date}
                     </span>
                     {approval.fileUrl && (
-                      <div className="flex items-center gap-1.5 ml-1">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setViewerDoc({
-                              isOpen: true,
-                              fileUrl: approval.fileUrl,
-                              title: `${approval.title} (${approval.submittedBy || 'Submitted Doc'})`
-                            });
-                          }}
-                          className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md border border-blue-100 transition-colors cursor-pointer"
-                        >
-                          <Eye size={11} /> View Doc
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            triggerDirectDownload(approval.fileUrl);
-                          }}
-                          className="p-1 text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors cursor-pointer"
-                          title="Download File"
-                        >
-                          <Download size={11} />
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerDirectDownload(approval.fileUrl, `${approval.title} (${approval.submittedBy || 'Submitted Doc'})`);
+                        }}
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200 transition-colors cursor-pointer ml-1"
+                        title="Download Document"
+                      >
+                        <Download size={11} /> Download Doc
+                      </button>
                     )}
                   </div>
                 </div>
@@ -456,35 +440,20 @@ const Approvals = () => {
                 </div>
 
                 {selectedApproval.fileUrl && (
-                  <div className="flex items-center gap-2">
-                    <button 
-                      type="button"
-                      onClick={() => setViewerDoc({
-                        isOpen: true,
-                        fileUrl: selectedApproval.fileUrl,
-                        title: `${selectedApproval.title || 'Submitted Document'} (${selectedApproval.teamName || 'FYP Team'})`
-                      })}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-colors cursor-pointer border border-blue-100 shadow-xs"
-                    >
-                      <Eye size={15} />
-                      View Document
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => triggerDirectDownload(selectedApproval.fileUrl)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors cursor-pointer border border-gray-200 shadow-xs"
-                      title="Download Attachment"
-                    >
-                      <Download size={15} />
-                      Download
-                    </button>
-                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => triggerDirectDownload(selectedApproval.fileUrl, `${selectedApproval.title || 'Submitted Document'} (${selectedApproval.teamName || 'FYP Team'})`)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-xs"
+                  >
+                    <Download size={15} />
+                    Download Document
+                  </button>
                 )}
 
                 <div className="space-y-4">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Review Comments (Optional)</p>
                   <textarea 
-                    value={feedbackText}
+                    value={feedbackText || ''}
                     onChange={(e) => setFeedbackText(e.target.value)}
                     placeholder="Provide feedback or guidance for the team..."
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"

@@ -173,7 +173,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                     </label>
                     <input
                       type="text"
-                      value={formData.name}
+                      value={formData.name || ''}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full p-3 sm:p-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all font-medium text-sm"
                       placeholder="Enter your full name"
@@ -186,7 +186,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                     </label>
                     <input
                       type="text"
-                      value={formData.phone}
+                      value={formData.phone || ''}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       className="w-full p-3 sm:p-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all font-medium text-sm"
                       placeholder="Enter your phone number"
@@ -245,7 +245,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="text"
-                      value={newInterest}
+                      value={newInterest || ''}
                       onChange={(e) => setNewInterest(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && handleAddInterest(e)}
                       className="flex-1 p-3 sm:p-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all font-medium text-sm"

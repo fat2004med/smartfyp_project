@@ -142,7 +142,7 @@ const ResetPassword = () => {
                     type="password" 
                     required
                     placeholder="New Password"
-                    value={password}
+                    value={password || ''}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                   />
@@ -153,7 +153,7 @@ const ResetPassword = () => {
                     type="password" 
                     required
                     placeholder="Confirm New Password"
-                    value={confirmPassword}
+                    value={confirmPassword || ''}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                   />
@@ -164,11 +164,11 @@ const ResetPassword = () => {
                 <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Password Strength Checklist:</h4>
                 <div className="grid grid-cols-1 gap-2">
                   {[
-                    { label: 'Minimum 8 characters', valid: password.length >= 8 },
-                    { label: 'One uppercase letter (A-Z)', valid: /[A-Z]/.test(password) },
-                    { label: 'One lowercase letter (a-z)', valid: /[a-z]/.test(password) },
-                    { label: 'One number (0-9)', valid: /[0-9]/.test(password) },
-                    { label: 'One special character (e.g. !, @, #, $)', valid: /[^A-Za-z0-9\s]/.test(password) }
+                    { label: 'Minimum 8 characters', valid: (password || '').length >= 8 },
+                    { label: 'One uppercase letter (A-Z)', valid: /[A-Z]/.test(password || '') },
+                    { label: 'One lowercase letter (a-z)', valid: /[a-z]/.test(password || '') },
+                    { label: 'One number (0-9)', valid: /[0-9]/.test(password || '') },
+                    { label: 'One special character (e.g. !, @, #, $)', valid: /[^A-Za-z0-9\s]/.test(password || '') }
                   ].map((req, idx) => (
                     <div key={idx} className="flex items-center gap-2 text-xs">
                       <div className={`w-4 h-4 rounded-full flex items-center justify-center transition-colors ${req.valid ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>

@@ -1,0 +1,5 @@
+[providers]
+npm = {}
+
+[phases.install]
+cmds = ["npm install"]

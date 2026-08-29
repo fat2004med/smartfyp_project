@@ -54,6 +54,15 @@ router.post(["/upload-scan", "/upload"], protect, upload.single("file"), async (
         const pyData = await pyRes.json();
         responseData = pyData;
         pythonServiceAvailable = true;
+
+        if (!responseData.summary) {
+          const topMatch = responseData.breakdown && responseData.breakdown.length > 0 ? responseData.breakdown[0] : null;
+          if (responseData.is_plagiarized) {
+            responseData.summary = `Fine-Tuned Model Screening: Critical semantic similarity detected! Overlap score is ${(responseData.overall_score * 100).toFixed(1)}%, exceeding threshold ${(responseData.threshold * 100).toFixed(0)}%. ${topMatch ? `Strongest vector correlation observed with "${topMatch.title}" (${(topMatch.similarity * 100).toFixed(1)}%).` : ""}`;
+          } else {
+            responseData.summary = `Fine-Tuned Model Screening: Document originality verified. Overall semantic similarity index is ${(responseData.overall_score * 100).toFixed(1)}%, within permissible academic limits.`;
+          }
+        }
       }
     } catch (pyErr) {
       // Python microservice not running on localhost:5000 -> use high-precision built-in embedding engine

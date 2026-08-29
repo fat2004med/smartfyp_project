@@ -15,7 +15,6 @@
     "clean": "node -e \"const fs=require('fs'); if(fs.existsSync('dist')) fs.rmSync('dist', {recursive: true, force: true});\""
   },
   "dependencies": {
-    "@google/genai": "^1.29.0",
     "autoprefixer": "^10.4.21",
     "axios": "^1.15.0",
     "bcryptjs": "^3.0.3",

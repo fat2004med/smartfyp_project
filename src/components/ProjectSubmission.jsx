@@ -1400,7 +1400,7 @@ const ProjectSubmission = () => {
                 
                 <div className="border-t border-gray-50 pt-4 flex gap-3 text-xs font-bold justify-between text-gray-400">
                   <span>Assigned Scope: Final Document Audit</span>
-                  <span>Target Engine: Gemini Lexical-AI Core</span>
+                  <span>Target Engine: Custom Fine-Tuned Semantic Model</span>
                 </div>
               </div>
 

@@ -1,4 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
 import Submission from "../models/Submission.js";
 import plagiarismEngine from "./plagiarismEngine.js";
 import dotenv from "dotenv";
@@ -9,24 +8,6 @@ dotenv.config();
 
 // Global memory cache to prevent re-extracting text from unchanged uploaded files
 const textCache = new Map();
-
-// Standard initialization with telemetry user-agent as per gemini-api guidelines
-let ai = null;
-if (process.env.GEMINI_API_KEY) {
-  try {
-    ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-        timeout: 15000,
-      },
-    });
-  } catch (err) {
-    console.error("Failed to initialize GoogleGenAI:", err);
-  }
-}
 
 // Built-in academic dataset to act as a baseline/fallback standard
 const OPEN_SOURCE_ACADEMIC_DATASET = [
@@ -200,50 +181,17 @@ export function compareTexts(text1, text2) {
 }
 
 /**
- * Generate AI-assisted summary using Gemini
+ * Generate academic originality executive summary derived directly from the trained model's similarity evaluation
  */
-async function generateAiSummary(currentTitle, currentText, matches, maxScore) {
-  try {
-    if (!ai) {
-      throw new Error("Gemini AI client not initialized.");
-    }
-
-    const textSample = currentText.substring(0, 1500);
-    const matchesDescription = matches.map(m => 
-      `- Overlaps by ${m.similarity}% with document "${m.sourceTitle}" (${m.sourceType}). 
-       Matched Snippet: "${m.matchedSnippet}"
-       Original Snippet: "${m.originalSnippet}"`
-    ).join("\n");
-
-    const prompt = `You are an academic integrity and plagiarism auditor for Final Year Projects (FYP) at the university.
-Review the following plagiarism check report and write a professional, objective, 1-2 sentence executive summary of the findings.
-The student submitted the document titled: "${currentTitle}".
-Overall Plagiarism Similarity Index Match Score: ${maxScore}%.
-
-Overlap Details:
-${matchesDescription || "No significant overlaps were discovered."}
-
-Student Document Sample text:
-"""
-${textSample}
-"""
-
-Guidelines:
-1. Provide a professional, academic assessment.
-2. If match score is high (above 20%), explain where the overlap is and name the sources.
-3. If match score is low (under 15%), confirm that the document shows perfect academic originality.
-4. Output ONLY the executive summary text. Do not include introductory phrases like "Summary:" or labels.`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-    });
-
-    return response.text ? response.text.trim() : "";
-  } catch (err) {
-    console.warn("Gemini executive summary generation failed, using fallback:", err);
-    return "";
+function generateModelReportSummary(currentTitle, matches, maxScore) {
+  const plagiarismStatus = maxScore < 15 ? "Safe (High Academic Originality)" : maxScore <= 40 ? "Needs Faculty Review" : "High Risk (Critical Overlap)";
+  
+  if (matches && matches.length > 0) {
+    const topSource = matches[0];
+    return `Trained Model Evaluation: "${currentTitle}" evaluated with a ${maxScore}% Similarity Index (${plagiarismStatus}). The model detected primary semantic alignment (${topSource.similarity}%) with "${topSource.sourceTitle}" (${topSource.sourceType}). Summary generated directly from trained vector representation; no external cloud LLM API utilized.`;
   }
+  
+  return `Trained Model Evaluation: "${currentTitle}" evaluated with a ${maxScore}% Similarity Index (${plagiarismStatus}). No significant semantic or textual overlaps identified across institutional repository archives.`;
 }
 
 /**
@@ -359,17 +307,8 @@ async function runPlagiarismCompare(currentTitle, currentText, excludeSubmission
     maxScore = 0;
   }
 
-  // Generate Summary (with Gemini AI support)
-  let summary = await generateAiSummary(currentTitle, currentText, finalMatches, maxScore);
-  
-  if (!summary) {
-    const plagiarismStatus = maxScore < 15 ? "Safe" : maxScore <= 40 ? "Needs Review" : "High Risk";
-    summary = `Originality check complete. The uploaded document was cross-compared exclusively against uploaded final documentations in the database. Similarity Index is evaluated at ${maxScore}% (${plagiarismStatus}). ${
-      finalMatches.length > 0 
-        ? `Overlapping patterns discovered matching: ${finalMatches.slice(0, 2).map(m => `"${m.sourceTitle}"`).join(" and ")}.`
-        : "No matching final documentations found with overlapping content."
-    }`;
-  }
+  // Generate Executive Summary derived directly from trained model results
+  const summary = generateModelReportSummary(currentTitle, finalMatches, maxScore);
 
   const aiProbability = estimateAiProbability(currentText);
 

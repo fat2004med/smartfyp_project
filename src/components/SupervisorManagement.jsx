@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'motion/react';
+import ConfirmModal from './ConfirmModal';
 import { 
   Users, 
   Plus, 
@@ -31,6 +32,8 @@ const SupervisorManagement = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingSup, setEditingSup] = useState(null);
+  const [deleteConfirmSup, setDeleteConfirmSup] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchSupervisors = async () => {
     try {
@@ -126,15 +129,18 @@ const SupervisorManagement = () => {
     }
   };
 
-  const handleDeleteSupervisor = async (id) => {
-    if (window.confirm('Are you sure you want to delete this supervisor?')) {
-      try {
-        await api.delete(`/api/users/${id}`);
-        toast.success('Supervisor removed');
-        fetchSupervisors();
-      } catch (error) {
-        toast.error('Error removing supervisor');
-      }
+  const handleDeleteSupervisor = async (sup) => {
+    if (!sup) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/users/${sup._id}`);
+      toast.success('Supervisor removed successfully');
+      setDeleteConfirmSup(null);
+      fetchSupervisors();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error removing supervisor');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -275,7 +281,7 @@ const SupervisorManagement = () => {
                         <Edit2 size={16} />
                       </button>
                       <button 
-                        onClick={() => handleDeleteSupervisor(sup._id)}
+                        onClick={() => setDeleteConfirmSup(sup)}
                         className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors" 
                         title="Delete Supervisor"
                       >
@@ -550,6 +556,19 @@ const SupervisorManagement = () => {
         )}
       </AnimatePresence>
 
+      {/* Delete Supervisor Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmSup}
+        onClose={() => setDeleteConfirmSup(null)}
+        onConfirm={() => handleDeleteSupervisor(deleteConfirmSup)}
+        isLoading={deleting}
+        title="Confirm Supervisor Removal"
+        message="Are you sure you want to remove this supervisor from the platform? Their access and assignments will be revoked. This action cannot be undone."
+        confirmText="Yes, Remove"
+        cancelText="Cancel"
+        variant="danger"
+        itemName={deleteConfirmSup ? `${deleteConfirmSup.name} (${deleteConfirmSup.email})` : null}
+      />
     </div>
   );
 };

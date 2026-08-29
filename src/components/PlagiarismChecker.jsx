@@ -18,6 +18,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import ConfirmModal from './ConfirmModal';
 
 const PlagiarismChecker = () => {
   const [file, setFile] = useState(null);
@@ -31,6 +32,8 @@ const PlagiarismChecker = () => {
   const [newSourceContent, setNewSourceContent] = useState('');
   const [isAddingSource, setIsAddingSource] = useState(false);
   const [isClearingSources, setIsClearingSources] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [deleteConfirmSource, setDeleteConfirmSource] = useState(null);
 
   // Fetch indexed source documents
   const fetchSources = async () => {
@@ -49,29 +52,29 @@ const PlagiarismChecker = () => {
   }, []);
 
   const handleClearAllSources = async () => {
-    if (!window.confirm('Are you sure you want to clear all indexed source documents? Plagiarism will only be checked against documents you add or actual project archives in your database.')) {
-      return;
-    }
     setIsClearingSources(true);
     const toastId = toast.loading('Clearing plagiarism sources repository...');
     try {
       await axios.post('/api/plagiarism/clear-all');
       toast.success('Plagiarism repository cleared successfully!', { id: toastId });
       setScanResult(null);
+      setShowClearConfirm(false);
       fetchSources();
-    } catch (err) {
+    } catch {
       toast.error('Failed to clear sources repository.', { id: toastId });
     } finally {
       setIsClearingSources(false);
     }
   };
 
-  const handleDeleteSource = async (id, title) => {
+  const handleDeleteSource = async (sourceToDelete) => {
+    if (!sourceToDelete) return;
     try {
-      await axios.delete(`/api/plagiarism/source/${id}`);
-      toast.success(`Removed "${title}"`);
+      await axios.delete(`/api/plagiarism/source/${sourceToDelete.id}`);
+      toast.success(`Removed "${sourceToDelete.title}"`);
+      setDeleteConfirmSource(null);
       fetchSources();
-    } catch (err) {
+    } catch {
       toast.error('Failed to remove source.');
     }
   };
@@ -311,7 +314,7 @@ const PlagiarismChecker = () => {
                 {sources.length > 0 && (
                   <button
                     type="button"
-                    onClick={handleClearAllSources}
+                    onClick={() => setShowClearConfirm(true)}
                     disabled={isClearingSources}
                     title="Clear all indexed baseline sources"
                     className="text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
@@ -332,7 +335,7 @@ const PlagiarismChecker = () => {
                   {s.id && (
                     <button
                       type="button"
-                      onClick={() => handleDeleteSource(s.id, s.title)}
+                      onClick={() => setDeleteConfirmSource({ id: s.id, title: s.title })}
                       className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-600 p-1 transition-opacity cursor-pointer"
                       title="Remove source"
                     >
@@ -576,6 +579,32 @@ const PlagiarismChecker = () => {
           </div>
         </div>
       )}
+
+      {/* Clear All Sources Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={handleClearAllSources}
+        isLoading={isClearingSources}
+        title="Clear All Indexed Sources"
+        message="Are you sure you want to clear all indexed source documents? Plagiarism will only be checked against documents you manually upload or new project archives in the database."
+        confirmText="Yes, Clear All"
+        cancelText="Cancel"
+        variant="danger"
+      />
+
+      {/* Delete Single Source Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmSource}
+        onClose={() => setDeleteConfirmSource(null)}
+        onConfirm={() => handleDeleteSource(deleteConfirmSource)}
+        title="Remove Source Document"
+        message="Are you sure you want to remove this document from the plagiarism detection index?"
+        confirmText="Yes, Remove"
+        cancelText="Cancel"
+        variant="danger"
+        itemName={deleteConfirmSource ? deleteConfirmSource.title : null}
+      />
     </div>
   );
 };

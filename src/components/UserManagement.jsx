@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import ConfirmModal from './ConfirmModal';
 import { 
   Users, 
   UserPlus, 
@@ -40,7 +41,8 @@ const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [depts, setDepts] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState(null);
+  const [statusConfirmData, setStatusConfirmData] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Direct Password Reset Modal State (Solution 2)
@@ -219,28 +221,34 @@ const UserManagement = () => {
     }
   };
 
-  const handleToggleStatus = async (id) => {
+  const handleToggleStatus = async (userToToggle) => {
+    if (!userToToggle) return;
+    const id = userToToggle._id;
     setSubmittingId(`toggle-${id}`);
     setError(null);
     try {
       const { data } = await api.put(`/api/users/${id}/toggle-status`);
       setUsers(users.map(u => u._id === id ? { ...u, isActive: data.isActive } : u));
       toast.success(data.message || 'Status updated successfully!');
+      setStatusConfirmData(null);
     } catch (error) {
       setError(error.response?.data?.message || 'Error toggling user status');
+      toast.error(error.response?.data?.message || 'Error toggling user status');
     } finally {
       setSubmittingId(null);
     }
   };
 
-  const handleDeleteUser = async (id) => {
+  const handleDeleteUser = async (userToDelete) => {
+    if (!userToDelete) return;
+    const id = userToDelete._id;
     setSubmittingId(`delete-${id}`);
     setError(null);
     try {
       await api.delete(`/api/users/${id}`);
       await fetchUsers();
       toast.success('User deleted successfully!');
-      setDeleteConfirmId(null);
+      setDeleteConfirmUser(null);
     } catch (error) {
       // Handled by interceptor
     } finally {
@@ -487,7 +495,10 @@ const UserManagement = () => {
                           )}
                         </button>
                         <button 
-                          onClick={() => handleToggleStatus(user._id)}
+                          onClick={() => setStatusConfirmData({
+                            user,
+                            action: user.isActive !== false ? 'deactivate' : 'activate'
+                          })}
                           className={`p-2.5 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-sm border ${
                             user.isActive !== false 
                               ? 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-600 hover:text-white' 
@@ -508,7 +519,7 @@ const UserManagement = () => {
                               toast.error("Please deactivate the user before deleting.");
                               return;
                             }
-                            setDeleteConfirmId(user._id);
+                            setDeleteConfirmUser(user);
                           }}
                           className={`p-2.5 rounded-xl transition-all shadow-sm border ${
                             user.isActive !== false 
@@ -1144,46 +1155,37 @@ const UserManagement = () => {
         )}
       </AnimatePresence>
 
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deleteConfirmId && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDeleteConfirmId(null)}
-              className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center space-y-4"
-            >
-              <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trash2 size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900">Confirm Deletion</h3>
-              <p className="text-gray-500">Are you sure you want to delete this user? This action cannot be undone.</p>
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setDeleteConfirmId(null)}
-                  className="flex-1 px-4 py-3 border border-gray-200 text-gray-500 font-bold rounded-xl hover:bg-gray-50 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDeleteUser(deleteConfirmId)}
-                  className="flex-1 bg-red-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Deactivation / Activation Confirmation Dialogue Modal */}
+      <ConfirmModal
+        isOpen={!!statusConfirmData}
+        onClose={() => setStatusConfirmData(null)}
+        onConfirm={() => handleToggleStatus(statusConfirmData?.user)}
+        isLoading={submittingId === `toggle-${statusConfirmData?.user?._id}`}
+        title={statusConfirmData?.action === 'deactivate' ? 'Confirm Deactivation' : 'Confirm Activation'}
+        message={
+          statusConfirmData?.action === 'deactivate'
+            ? 'Are you sure you want to deactivate this user account? The user will be blocked from logging into the portal until reactivated.'
+            : 'Are you sure you want to activate this user account? The user will regain access to log into the portal.'
+        }
+        confirmText={statusConfirmData?.action === 'deactivate' ? 'Yes, Deactivate' : 'Yes, Activate'}
+        cancelText="Cancel"
+        variant={statusConfirmData?.action === 'deactivate' ? 'warning' : 'success'}
+        itemName={statusConfirmData?.user ? `${statusConfirmData.user.name} (${statusConfirmData.user.email})` : null}
+      />
+
+      {/* Delete Confirmation Dialogue Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmUser}
+        onClose={() => setDeleteConfirmUser(null)}
+        onConfirm={() => handleDeleteUser(deleteConfirmUser)}
+        isLoading={submittingId === `delete-${deleteConfirmUser?._id}`}
+        title="Confirm Deletion"
+        message="Are you sure you want to permanently delete this user? All user profile data will be permanently removed. This action cannot be undone."
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        variant="danger"
+        itemName={deleteConfirmUser ? `${deleteConfirmUser.name} (${deleteConfirmUser.email})` : null}
+      />
     </div>
   );
 };

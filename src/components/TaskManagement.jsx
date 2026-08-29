@@ -24,6 +24,7 @@ import {
   Download
 } from 'lucide-react';
 import DocumentViewerModal from './DocumentViewerModal';
+import ConfirmModal from './ConfirmModal';
 import { triggerDirectDownload } from '../utils/fileHelpers';
 
 const TaskManagement = () => {
@@ -42,6 +43,8 @@ const TaskManagement = () => {
   const [projects, setProjects] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [reviewData, setReviewData] = useState({ grade: '', feedback: '' });
+  const [deleteConfirmTask, setDeleteConfirmTask] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [newTask, setNewTask] = useState({
     title: '',
@@ -166,14 +169,18 @@ const TaskManagement = () => {
     }
   };
 
-  const handleDeleteTask = async (id) => {
-    if (window.confirm('Are you sure you want to delete this task?')) {
-      try {
-        await axios.delete(`/api/tasks/${id}`);
-        fetchData();
-      } catch (error) {
-        alert(error.response?.data?.message || 'Error deleting task');
-      }
+  const handleDeleteTask = async (taskToDelete) => {
+    if (!taskToDelete) return;
+    setIsDeleting(true);
+    try {
+      await axios.delete(`/api/tasks/${taskToDelete._id}`);
+      toast.success('Task deleted successfully');
+      setDeleteConfirmTask(null);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error deleting task');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -315,7 +322,7 @@ const TaskManagement = () => {
                   <Edit2 size={16} />
                 </button>
                 <button 
-                  onClick={() => handleDeleteTask(task._id)}
+                  onClick={() => setDeleteConfirmTask(task)}
                   className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors" 
                   title="Delete Task"
                 >
@@ -791,6 +798,20 @@ const TaskManagement = () => {
         onClose={() => setViewerDoc({ isOpen: false, fileUrl: '', title: '' })}
         fileUrl={viewerDoc.fileUrl}
         title={viewerDoc.title}
+      />
+
+      {/* Delete Task Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmTask}
+        onClose={() => setDeleteConfirmTask(null)}
+        onConfirm={() => handleDeleteTask(deleteConfirmTask)}
+        isLoading={isDeleting}
+        title="Confirm Task Deletion"
+        message="Are you sure you want to delete this task? Any submissions or feedback associated with this task will be permanently removed."
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        variant="danger"
+        itemName={deleteConfirmTask ? deleteConfirmTask.title : null}
       />
     </div>
   );

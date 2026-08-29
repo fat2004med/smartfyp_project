@@ -21,6 +21,7 @@ import {
   X,
   ExternalLink
 } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
 
 const Notifications = () => {
   const navigate = useNavigate();
@@ -37,6 +38,7 @@ const Notifications = () => {
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNotification, setSelectedNotification] = useState(null);
+  const [deleteConfirmNotification, setDeleteConfirmNotification] = useState(null);
 
   const notificationId = searchParams.get('id');
 
@@ -61,6 +63,16 @@ const Notifications = () => {
       markAsRead(notification._id);
     }
     setSelectedNotification(notification);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmNotification) return;
+    const id = deleteConfirmNotification._id;
+    await deleteNotification(id);
+    if (selectedNotification?._id === id) {
+      setSelectedNotification(null);
+    }
+    setDeleteConfirmNotification(null);
   };
 
   const handleProceedLink = (link) => {
@@ -273,9 +285,9 @@ const Notifications = () => {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      deleteNotification(notification._id);
+                      setDeleteConfirmNotification(notification);
                     }}
-                    className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-[11px] font-bold hover:bg-red-600 hover:text-white transition-all border border-red-100 flex items-center gap-1.5"
+                    className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-[11px] font-bold hover:bg-red-600 hover:text-white transition-all border border-red-100 flex items-center gap-1.5 cursor-pointer"
                   >
                     <Trash2 size={14} />
                     Delete
@@ -359,11 +371,8 @@ const Notifications = () => {
               {/* Modal Footer */}
               <div className="p-6 border-t border-gray-100 bg-gray-50/30 flex items-center justify-between gap-3 flex-wrap">
                 <button 
-                  onClick={() => {
-                    deleteNotification(selectedNotification._id);
-                    setSelectedNotification(null);
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 rounded-xl text-xs font-bold transition-all"
+                  onClick={() => setDeleteConfirmNotification(selectedNotification)}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 rounded-xl text-xs font-bold transition-all cursor-pointer"
                 >
                   <Trash2 size={14} />
                   Delete
@@ -403,6 +412,19 @@ const Notifications = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Delete Notification Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmNotification}
+        onClose={() => setDeleteConfirmNotification(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Notification"
+        message="Are you sure you want to delete this notification? It will be removed from your notifications inbox."
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        variant="danger"
+        itemName={deleteConfirmNotification ? deleteConfirmNotification.title : null}
+      />
     </div>
   );
 };

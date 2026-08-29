@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import ConfirmModal from './ConfirmModal';
 import { 
   Building2, 
   Plus, 
@@ -30,7 +31,8 @@ const DepartmentManagement = () => {
   const [departments, setDepartments] = useState([]);
   const [hods, setHods] = useState([]);
   const [editingDept, setEditingDept] = useState(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [deleteConfirmDept, setDeleteConfirmDept] = useState(null);
+  const [statusConfirmDept, setStatusConfirmDept] = useState(null);
 
   const [newDept, setNewDept] = useState({
     name: '',
@@ -104,28 +106,35 @@ const DepartmentManagement = () => {
     }
   };
 
-  const handleToggleStatus = async (id) => {
+  const handleToggleStatus = async (deptToToggle) => {
+    if (!deptToToggle) return;
+    const id = deptToToggle._id;
     setSubmittingId(`toggle-${id}`);
     setError(null);
     try {
       const { data } = await axios.patch(`/api/departments/${id}/toggle-status`);
       setDepartments(departments.map(d => d._id === id ? { ...d, isActive: data.isActive } : d));
       toast.success(data.message || 'Status updated successfully!');
+      setStatusConfirmDept(null);
     } catch (error) {
-      setError(error.response?.data?.message || 'Error toggling department status');
+      const msg = error.response?.data?.message || 'Error toggling department status';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmittingId(null);
     }
   };
 
-  const handleDeleteDepartment = async (id) => {
+  const handleDeleteDepartment = async (deptToDelete) => {
+    if (!deptToDelete) return;
+    const id = deptToDelete._id;
     setSubmittingId(`delete-${id}`);
     setError(null);
     try {
       await axios.delete(`/api/departments/${id}`);
       setDepartments(departments.filter(d => d._id !== id));
       toast.success('Department deleted successfully!');
-      setDeleteConfirmId(null);
+      setDeleteConfirmDept(null);
     } catch (error) {
       // Handled by interceptor
     } finally {
@@ -261,7 +270,10 @@ const DepartmentManagement = () => {
                         <Edit2 size={16} />
                       </button>
                       <button 
-                        onClick={() => handleToggleStatus(dept._id)}
+                        onClick={() => setStatusConfirmDept({
+                          dept,
+                          action: dept.isActive !== false ? 'deactivate' : 'activate'
+                        })}
                         className={`p-2.5 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-sm border ${
                           dept.isActive !== false 
                             ? 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-600 hover:text-white' 
@@ -284,7 +296,7 @@ const DepartmentManagement = () => {
                             toast.error("Please deactivate the department before deleting.");
                             return;
                           }
-                          setDeleteConfirmId(dept._id);
+                          setDeleteConfirmDept(dept);
                         }}
                         className={`p-2.5 rounded-xl transition-all shadow-sm border ${
                           dept.isActive !== false 
@@ -429,46 +441,37 @@ const DepartmentManagement = () => {
         )}
       </AnimatePresence>
 
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deleteConfirmId && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDeleteConfirmId(null)}
-              className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center space-y-4"
-            >
-              <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trash2 size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900">Confirm Deletion</h3>
-              <p className="text-gray-500">Are you sure you want to permanently delete this department? This action cannot be undone.</p>
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setDeleteConfirmId(null)}
-                  className="flex-1 px-4 py-3 border border-gray-200 text-gray-500 font-bold rounded-xl hover:bg-gray-50 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDeleteDepartment(deleteConfirmId)}
-                  className="flex-1 bg-red-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Deactivation / Activation Confirmation Dialogue Modal */}
+      <ConfirmModal
+        isOpen={!!statusConfirmDept}
+        onClose={() => setStatusConfirmDept(null)}
+        onConfirm={() => handleToggleStatus(statusConfirmDept?.dept)}
+        isLoading={submittingId === `toggle-${statusConfirmDept?.dept?._id}`}
+        title={statusConfirmDept?.action === 'deactivate' ? 'Confirm Deactivation' : 'Confirm Activation'}
+        message={
+          statusConfirmDept?.action === 'deactivate'
+            ? 'Are you sure you want to deactivate this department? Inactive departments will be disabled for new student and faculty registrations.'
+            : 'Are you sure you want to activate this department? It will become active for registrations and project allocation.'
+        }
+        confirmText={statusConfirmDept?.action === 'deactivate' ? 'Yes, Deactivate' : 'Yes, Activate'}
+        cancelText="Cancel"
+        variant={statusConfirmDept?.action === 'deactivate' ? 'warning' : 'success'}
+        itemName={statusConfirmDept?.dept ? statusConfirmDept.dept.name : null}
+      />
+
+      {/* Delete Confirmation Dialogue Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmDept}
+        onClose={() => setDeleteConfirmDept(null)}
+        onConfirm={() => handleDeleteDepartment(deleteConfirmDept)}
+        isLoading={submittingId === `delete-${deleteConfirmDept?._id}`}
+        title="Confirm Deletion"
+        message="Are you sure you want to permanently delete this department? This action cannot be undone."
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        variant="danger"
+        itemName={deleteConfirmDept ? deleteConfirmDept.name : null}
+      />
     </div>
   );
 };

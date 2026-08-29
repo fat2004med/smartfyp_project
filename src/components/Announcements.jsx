@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import toast from 'react-hot-toast';
+import ConfirmModal from './ConfirmModal';
 
 const Announcements = () => {
   const { user } = useAuth();
@@ -33,6 +34,8 @@ const Announcements = () => {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [hasAllocatedTeam, setHasAllocatedTeam] = useState(true);
+  const [deleteConfirmAnnouncement, setDeleteConfirmAnnouncement] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [announcementData, setAnnouncementData] = useState({ created: [], assigned: [] });
 
@@ -186,14 +189,19 @@ const Announcements = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this announcement?')) return;
+  const handleDelete = async (itemToDelete) => {
+    if (!itemToDelete) return;
+    setIsDeleting(true);
     try {
-      await axios.delete(`/api/announcements/${id}`);
+      await axios.delete(`/api/announcements/${itemToDelete._id}`);
       toast.success('Announcement deleted successfully!');
+      setDeleteConfirmAnnouncement(null);
+      setIsDetailsModalOpen(false);
       fetchAnnouncements();
-    } catch {
-      // Error handled by interceptor
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error deleting announcement');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -573,10 +581,7 @@ const Announcements = () => {
                                <Edit2 size={12} /> Edit
                             </button>
                             <button 
-                              onClick={() => {
-                                handleDelete(selectedAnnouncement._id);
-                                setIsDetailsModalOpen(false);
-                              }}
+                              onClick={() => setDeleteConfirmAnnouncement(selectedAnnouncement)}
                               className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
                             >
                                <Trash2 size={12} /> Delete
@@ -760,6 +765,20 @@ const Announcements = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Delete Announcement Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmAnnouncement}
+        onClose={() => setDeleteConfirmAnnouncement(null)}
+        onConfirm={() => handleDelete(deleteConfirmAnnouncement)}
+        isLoading={isDeleting}
+        title="Confirm Announcement Deletion"
+        message="Are you sure you want to delete this announcement? It will be removed from all users' dashboards and notifications."
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        variant="danger"
+        itemName={deleteConfirmAnnouncement ? deleteConfirmAnnouncement.title : null}
+      />
     </div>
   );
 };

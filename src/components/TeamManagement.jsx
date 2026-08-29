@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { DocumentViewerModal } from './DocumentViewerModal';
 import { triggerDirectDownload } from '../utils/fileHelpers';
+import ConfirmModal from './ConfirmModal';
 
 const TeamManagement = () => {
   const { user: currentUser } = useAuth();
@@ -1018,45 +1019,17 @@ const TeamManagement = () => {
       </AnimatePresence>
 
       {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deleteConfirmId && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDeleteConfirmId(null)}
-              className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center space-y-4"
-            >
-              <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trash2 size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900">Confirm Deletion</h3>
-              <p className="text-gray-500 text-sm">Are you sure you want to permanently delete this team? This action will remove the team, its project information, and cannot be undone.</p>
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setDeleteConfirmId(null)}
-                  className="flex-1 px-4 py-3 border border-gray-200 text-gray-500 font-bold rounded-xl hover:bg-gray-50 transition-all text-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDeleteTeam(deleteConfirmId)}
-                  className="flex-1 bg-red-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200 text-xs"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={() => handleDeleteTeam(deleteConfirmId)}
+        title="Delete Team"
+        message="Are you sure you want to permanently delete this team? This action will remove the team, its project information, and cannot be undone."
+        confirmText="Yes, Delete Team"
+        cancelText="Cancel"
+        variant="danger"
+        itemName={teams.find(t => t._id === deleteConfirmId)?.title || teams.find(t => t._id === deleteConfirmId)?.name || 'Team'}
+      />
       {/* Document Viewer Modal */}
       <DocumentViewerModal
         isOpen={viewerDoc.isOpen}

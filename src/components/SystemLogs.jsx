@@ -20,6 +20,7 @@ import {
   FileText,
   Activity
 } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
 
 const SystemLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -29,6 +30,8 @@ const SystemLogs = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [dbStatus, setDbStatus] = useState('checking'); // 'connected' | 'disconnected' | 'checking'
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   
   const [recentActivities, setRecentActivities] = useState([]);
   const [activitiesLimit, setActivitiesLimit] = useState(5);
@@ -164,20 +167,17 @@ const SystemLogs = () => {
 
   // Clear system logs via database delete endpoint
   const handleClear = async () => {
-    if (!window.confirm('Are you sure you want to permanently clear all system log records? This action is irreversible.')) {
-      return;
-    }
-    
     try {
-      setIsRefreshing(true);
+      setIsClearing(true);
       await axios.delete('/api/dashboard/logs');
       setLogs([]);
       setCurrentPage(1);
+      setShowClearConfirm(false);
     } catch (err) {
       console.error('Failed to clear logs:', err);
       setErrorMsg('Error clearing logs. Please try again.');
     } finally {
-      setIsRefreshing(false);
+      setIsClearing(false);
     }
   };
 
@@ -296,9 +296,9 @@ const SystemLogs = () => {
           
           <button 
             id="btn-clear-logs"
-            onClick={handleClear}
+            onClick={() => setShowClearConfirm(true)}
             disabled={logs.length === 0}
-            className="flex items-center gap-2 bg-red-50 text-red-600 border border-red-100 px-4 py-2.5 rounded-xl font-bold hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+            className="flex items-center gap-2 bg-red-50 text-red-600 border border-red-100 px-4 py-2.5 rounded-xl font-bold hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer"
           >
             <Trash2 size={18} />
             Clear Logs
@@ -636,6 +636,19 @@ const SystemLogs = () => {
           </div>
         </div>
       </div>
+
+      {/* Clear Logs Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={handleClear}
+        isLoading={isClearing}
+        title="Clear All System Logs"
+        message="Are you sure you want to permanently clear all system event and audit logs? This action cannot be undone and historic traces will be wiped."
+        confirmText="Yes, Clear All Logs"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 };

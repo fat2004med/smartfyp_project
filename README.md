@@ -1,4 +1,4 @@
-# SmartFYP — Academic Final Year Project Management System
+# SmartFYP: A Modular Web-based Solution for Academic Project Workflow
 
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![React 19](https://img.shields.io/badge/React-19.0-blue.svg)](https://react.dev/)
@@ -7,8 +7,9 @@
 [![MongoDB](https://img.shields.io/badge/Database-MongoDB%20Atlas-47A248.svg)](https://www.mongodb.com/)
 [![Express](https://img.shields.io/badge/Backend-Express%204.21-lightgrey.svg)](https://expressjs.com/)
 [![ML Engine](https://img.shields.io/badge/ML-Fine--Tuned%20SentenceTransformers-blue.svg)](https://huggingface.co/)
-[![Vitest](https://img.shields.io/badge/Testing-Vitest%20(25%20Passed)-green.svg)](https://vitest.dev/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Testing](https://img.shields.io/badge/Testing-Vitest%20(25%20Passed)-green.svg)](https://vitest.dev/)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-fat2004med%2Fsmartfyp__project-181717?logo=github)](https://github.com/fat2004med/smartfyp_project)
+[![Project Scope](https://img.shields.io/badge/Project-Academic%20College%20FYP-informational.svg)](https://github.com/fat2004med/smartfyp_project)
 
 **SmartFYP** is a modern, production-grade enterprise web application engineered specifically for colleges, universities, and academic departments to orchestrate, evaluate, and archive undergraduate Final Year Projects (FYP) and capstone theses.
 
@@ -36,7 +37,7 @@ Built with a unified **Express + React 19 SPA** architecture, SmartFYP streamlin
 - [Testing & Quality Assurance](#testing--quality-assurance)
 - [Deployment Guide](#deployment-guide)
 - [Security & Compliance](#security--compliance)
-- [License](#license)
+- [Academic Ownership & Purpose](#academic-ownership--purpose)
 
 ---
 
@@ -327,8 +328,8 @@ Before running SmartFYP, ensure you have:
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/your-username/smartfyp.git
-   cd smartfyp
+   git clone https://github.com/fat2004med/smartfyp_project.git
+   cd smartfyp_project
    ```
 
 2. **Install Node.js dependencies**:
@@ -593,8 +594,11 @@ Before pushing this repository to a public GitHub repository, verify the followi
 
 ---
 
-## License
+## Academic Ownership & Purpose
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+This project is designed, built, and maintained specifically as an **Academic Final Year Project (FYP) for College & Institutional Evaluation**. It is proprietary academic coursework and is not released under any open-source license.
 
-Developed for academic institutions and educational communities to advance collaborative final year project management. Contributions, issues, and feature requests are welcome!
+* **GitHub Repository**: [https://github.com/fat2004med/smartfyp_project](https://github.com/fat2004med/smartfyp_project)
+* **Author / Developer**: Academic Final Year Project Team ([@fat2004med](https://github.com/fat2004med))
+* **Target Institution**: College Department of Computer Science & Information Technology
+* **Usage & Rights**: Developed strictly for university departmental project supervision, student submissions, panel evaluations, and institutional repository archiving. All rights reserved. Commercial redistribution, copying, or uncredited external re-licensing is strictly prohibited.

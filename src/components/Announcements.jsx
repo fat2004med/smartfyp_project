@@ -183,7 +183,7 @@ const Announcements = () => {
         targetRoles: []
       });
     } catch (error) {
-      alert(error.response?.data?.message || 'Error saving announcement');
+      toast.error(error.response?.data?.message || 'Error saving announcement');
     } finally {
       setLoadingAction(false);
     }

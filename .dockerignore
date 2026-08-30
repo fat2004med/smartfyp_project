@@ -1,0 +1,15 @@
+node_modules
+dist
+build
+coverage
+.git
+.gitignore
+*.log
+.env*
+!.env.example
+uploads/*
+!uploads/.gitkeep
+venv
+ml-service/venv
+__pycache__
+*.pyc

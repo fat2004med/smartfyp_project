@@ -1,0 +1,8 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "buildAptPackages": [],
+  "deploy": {
+    "aptPackages": [],
+    "startCommand": "node server.js"
+  }
+}

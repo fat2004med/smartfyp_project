@@ -230,6 +230,31 @@ router.post("/clear-all", protect, async (req, res) => {
 });
 
 /**
+ * 5b. POST /api/plagiarism/sync-repository
+ * Automatically index all FYP projects and archive documents into repository
+ */
+router.post("/sync-repository", protect, async (req, res) => {
+  try {
+    await plagiarismEngine.syncRepositorySources(true);
+    const activeSources = plagiarismEngine.sources || [];
+    return res.status(200).json({
+      success: true,
+      message: `Successfully indexed ${activeSources.length} final documentation source documents from admin project records.`,
+      count: activeSources.length,
+      sources: activeSources.map(s => ({
+        id: s._id,
+        title: s.title,
+        author: s.author || "Final Documentation",
+        year: s.year || new Date().getFullYear(),
+        docType: s.docType || "FYP Final Documentation"
+      }))
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * 6. POST /api/plagiarism/check-text
  * Raw text scanner
  */

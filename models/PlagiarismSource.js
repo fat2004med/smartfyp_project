@@ -17,6 +17,8 @@ const plagiarismSourceSchema = new mongoose.Schema(
     docType: { type: String, default: "FYP Final Documentation" },
     author: { type: String },
     year: { type: Number, default: () => new Date().getFullYear() },
+    projectId: { type: mongoose.Schema.Types.ObjectId, ref: "Project" },
+    submissionId: { type: mongoose.Schema.Types.ObjectId, ref: "Submission" },
   },
   { timestamps: true }
 );

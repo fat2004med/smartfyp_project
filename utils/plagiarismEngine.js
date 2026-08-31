@@ -1,10 +1,11 @@
 import fs from "fs";
 import path from "path";
 import User from "../models/User.js";
+import Department from "../models/Department.js";
 import PlagiarismSource from "../models/PlagiarismSource.js";
 import Project from "../models/Project.js";
 import Submission from "../models/Submission.js";
-import { extractTextFromFile } from "./plagiarismChecker.js";
+import { extractTextFromFile } from "./textExtractor.js";
 
 // Clean and tokenize text
 const STOP_WORDS = new Set([
@@ -192,19 +193,27 @@ export class EmbeddingPlagiarismEngine {
     // Combined n-gram overlap
     const ngramScore = (ngramOverlap3 * 0.6) + (ngramOverlap4 * 0.4);
 
-    // 2. Sentence-level fuzzy containment
-    const querySentences = this.getSentences(queryText);
-    const refSentences = this.getSentences(referenceText);
+    // 2. Sentence-level fuzzy containment (pre-tokenized & bounded for memory safety)
+    const querySentences = this.getSentences(queryText).slice(0, 150);
+    const refSentences = this.getSentences(referenceText).slice(0, 150);
     let matchedSentences = 0;
 
     if (querySentences.length > 0 && refSentences.length > 0) {
+      // Pre-compute token sets once for reference sentences to avoid inner loop heap allocation
+      const refTokenSets = [];
+      for (const rSent of refSentences) {
+        const rTokens = new Set(this.tokenize(rSent));
+        if (rTokens.size >= 3) {
+          refTokenSets.push(rTokens);
+        }
+      }
+
       for (const qSent of querySentences) {
         const qTokens = new Set(this.tokenize(qSent));
         if (qTokens.size < 3) continue;
 
         let bestOverlap = 0;
-        for (const rSent of refSentences) {
-          const rTokens = new Set(this.tokenize(rSent));
+        for (const rTokens of refTokenSets) {
           let common = 0;
           for (const t of qTokens) {
             if (rTokens.has(t)) common++;
@@ -253,86 +262,233 @@ export class EmbeddingPlagiarismEngine {
     };
   }
 
-  // Initialize and load embeddings strictly from final documentation submissions into memory
+  // Auto-sync repository sources ONLY from Projects in admin records that have Final Documentation marked during creation of submission slot
+  async syncRepositorySources(force = false) {
+    try {
+      // 1. Wipe previous / stale sources so only valid final documentation documents of admin project records exist
+      await PlagiarismSource.deleteMany({});
+
+      // 2. Fetch projects from database (admin project records)
+      const projects = await Project.find({})
+        .populate("department", "name")
+        .populate("supervisor", "name email")
+        .populate("teamLeader", "name")
+        .lean();
+
+      const seenKeys = new Set();
+      const docsToIndex = [];
+
+      for (const p of projects) {
+        if (!p.title || p.title.trim().length < 3) continue;
+
+        // Submissions for this project marked as final documentation during creation of slot
+        const finalSubs = await Submission.find({
+          project: p._id,
+          isFinalDocumentation: true,
+          $or: [
+            { fileUrl: { $exists: true, $nin: [null, ""] } },
+            { status: { $ne: "Not Submitted" } },
+            { "history.0": { $exists: true } }
+          ]
+        }).populate("submittedBy", "name email").lean();
+
+        // Project's own finalDocumentations records (marked final in project records)
+        const projFinalDocs = (p.finalDocumentations || []).filter(d =>
+          d && (d.fileUrl || d.title) && d.status !== "Not Submitted"
+        );
+
+        // Collect from valid submissions
+        for (const sub of finalSubs) {
+          const docTitle = (sub.title || "Final Documentation").trim();
+          const normKey = `${p._id}_${docTitle.toLowerCase()}`;
+          if (seenKeys.has(normKey)) continue;
+          seenKeys.add(normKey);
+
+          docsToIndex.push({
+            project: p,
+            submission: sub,
+            docTitle: docTitle,
+            fileUrl: sub.fileUrl || (sub.history && sub.history[0]?.fileUrl),
+            subDescription: sub.description || "",
+            subDate: sub.createdAt || Date.now()
+          });
+        }
+
+        // Collect from project.finalDocumentations (if not already added)
+        for (const doc of projFinalDocs) {
+          const docTitle = (doc.title || "Final Documentation").trim();
+          const normKey = `${p._id}_${docTitle.toLowerCase()}`;
+          if (seenKeys.has(normKey)) continue;
+          seenKeys.add(normKey);
+
+          docsToIndex.push({
+            project: p,
+            submission: null,
+            docTitle: docTitle,
+            fileUrl: doc.fileUrl,
+            subDescription: "",
+            subDate: Date.now()
+          });
+        }
+      }
+
+      for (const item of docsToIndex) {
+        const p = item.project;
+        const sub = item.submission;
+        const docTitle = item.docTitle;
+        const fileUrl = item.fileUrl;
+
+        // Format clean, descriptive title
+        let formattedTitle = `${p.title} (${docTitle})`;
+        if (docTitle.toLowerCase().includes(p.title.toLowerCase().slice(0, 10))) {
+          formattedTitle = docTitle;
+        } else if (docTitle.toLowerCase() === "final documentation") {
+          formattedTitle = `${p.title} (Final Documentation)`;
+        }
+
+        // Author line
+        const author = `${p.teamName ? p.teamName + " • " : ""}${p.department?.name || "Final Documentation"}`;
+
+        // Extract physical document text if file exists
+        let extractedDocText = "";
+        const candidatePaths = [];
+        if (fileUrl) {
+          const cleanUrl = fileUrl.startsWith("/") ? "." + fileUrl : fileUrl;
+          candidatePaths.push(path.resolve(cleanUrl));
+          const baseName = path.basename(cleanUrl);
+          const uploadsDir = path.resolve("uploads");
+          if (fs.existsSync(uploadsDir)) {
+            candidatePaths.push(path.join(uploadsDir, baseName));
+          }
+        }
+
+        // If SmartFYP and latest documentation exists, also include it
+        if (p.title.toLowerCase().includes("smartfyp")) {
+          const smartFypLatest = path.resolve("uploads/1788138255871-latest_documentation_SmartFYP.pdf");
+          if (fs.existsSync(smartFypLatest)) {
+            candidatePaths.push(smartFypLatest);
+          }
+        }
+
+        for (const cp of candidatePaths) {
+          if (fs.existsSync(cp)) {
+            const ext = path.extname(cp).toLowerCase();
+            let mimeType = "text/plain";
+            if (ext === ".pdf") mimeType = "application/pdf";
+            else if (ext === ".docx") mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            try {
+              const txt = await extractTextFromFile(cp, mimeType, path.basename(cp));
+              if (txt && txt.trim().length > 20) {
+                extractedDocText = txt.length > 30000 ? txt.slice(0, 30000) : txt;
+                break;
+              }
+            } catch (err) {
+              console.warn("File extraction warn for", cp, err.message);
+            }
+          }
+        }
+
+        // Build rich comprehensive text for comparison
+        const combinedText = [
+          `Project Title: ${p.title}`,
+          `Document: ${docTitle}`,
+          p.teamName ? `Team: ${p.teamName}` : "",
+          p.department?.name ? `Department: ${p.department.name}` : "",
+          p.supervisor?.name ? `Supervisor: ${p.supervisor.name}` : "",
+          p.description ? `Abstract & Overview: ${p.description}` : "",
+          p.abstract && p.abstract !== p.description ? `Abstract: ${p.abstract}` : "",
+          item.subDescription ? `Submission Notes: ${item.subDescription}` : "",
+          extractedDocText ? `Extracted Content:\n${extractedDocText}` : ""
+        ].filter(Boolean).join("\n\n").trim();
+
+        const embedding = this.generateEmbedding(combinedText);
+
+        await PlagiarismSource.create({
+          title: formattedTitle.trim(),
+          content: combinedText,
+          embedding,
+          dimension: this.dimension,
+          author,
+          year: p.year || new Date(item.subDate).getFullYear(),
+          docType: "FYP Final Documentation",
+          fileUrl: fileUrl || null,
+          projectId: p._id,
+          submissionId: sub?._id || null
+        });
+      }
+
+      // Directly update memory cache
+      const stored = await PlagiarismSource.find({}).lean();
+      this.sources = stored.map(src => ({
+        _id: src._id.toString(),
+        title: src.title,
+        content: src.content || src.title,
+        embedding: src.embedding,
+        author: src.author || "Final Documentation",
+        year: src.year || new Date().getFullYear(),
+        docType: src.docType || "FYP Final Documentation",
+        projectId: src.projectId?.toString() || null,
+        submissionId: src.submissionId?.toString() || null,
+        fileUrl: src.fileUrl || null
+      }));
+      this.sourceEmbeddings = this.sources.map(s => s.embedding);
+      this.isInitialized = true;
+      console.log(`⚡ [PlagiarismEngine] Repository sync completed with ${this.sources.length} indexed final documentation source documents.`);
+
+      return true;
+    } catch (err) {
+      console.warn("⚠️ [PlagiarismEngine] Auto-sync repository warning:", err.message);
+      return false;
+    }
+  }
+
+  // Initialize and load embeddings from database sources into memory
   async init() {
     try {
       const activeSources = [];
 
-      // 1. Fetch only submissions that have been marked as final documentation during creation or phase Final
-      const finalSubmissions = await Submission.find({
+      // 1. Ensure PlagiarismSource collection exists and contains ONLY valid final documentations from project records
+      const invalidCount = await PlagiarismSource.countDocuments({
         $or: [
-          { isFinalDocumentation: true },
-          { phase: "Final" }
-        ],
-        fileUrl: { $exists: true, $ne: null }
-      })
-      .populate("project")
-      .populate("submittedBy", "name email")
-      .lean();
+          { docType: "Archived FYP Project" },
+          { docType: "FYP Project Repository" },
+          { docType: "FYP Source Document" }
+        ]
+      });
+      const totalCount = await PlagiarismSource.countDocuments();
 
-      if (finalSubmissions && finalSubmissions.length > 0) {
-        for (const sub of finalSubmissions) {
-          if (!sub.fileUrl) continue;
+      if (totalCount === 0 || invalidCount > 0) {
+        await this.syncRepositorySources(true);
+        return true;
+      }
 
-          let fileUrl = sub.fileUrl;
-          if (fileUrl.startsWith("/")) {
-            fileUrl = "." + fileUrl;
-          }
-          let absolutePath = path.resolve(fileUrl);
-          
-          if (!fs.existsSync(absolutePath)) {
-            // Check if file exists in uploads/ directory by base name or suffix
-            const baseName = path.basename(fileUrl);
-            const uploadsDir = path.resolve("uploads");
-            if (fs.existsSync(uploadsDir)) {
-              const allUploads = fs.readdirSync(uploadsDir);
-              const matched = allUploads.find(f => f === baseName || f.endsWith(baseName) || baseName.endsWith(f));
-              if (matched) {
-                absolutePath = path.join(uploadsDir, matched);
-              }
-            }
-          }
+      // 2. Load all indexed sources from PlagiarismSource collection
+      const storedSources = await PlagiarismSource.find({}).lean();
+      for (const src of storedSources) {
+        if (!src.title) continue;
 
-          let extractedDocText = "";
-          if (fs.existsSync(absolutePath)) {
-            const ext = path.extname(absolutePath).toLowerCase();
-            let mimeType = "text/plain";
-            if (ext === ".pdf") mimeType = "application/pdf";
-            else if (ext === ".docx") mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            extractedDocText = await extractTextFromFile(absolutePath, mimeType, path.basename(absolutePath));
-          }
+        const embedding = (Array.isArray(src.embedding) && src.embedding.length === this.dimension)
+          ? src.embedding
+          : this.generateEmbedding(src.content || src.title);
 
-          const combinedText = [
-            sub.title || "",
-            sub.description || "",
-            extractedDocText || ""
-          ].filter(Boolean).join(". ").trim();
-
-          // Only index if there is actual document text extracted or sufficient content
-          if (combinedText.length >= 10 && (extractedDocText.length > 0 || (sub.description && sub.description.length > 20))) {
-            const projectTitle = sub.project?.title || sub.title || "Final Documentation";
-            const authorName = sub.submittedBy?.name || sub.project?.teamName || "Team";
-            const embedding = this.generateEmbedding(combinedText);
-
-            activeSources.push({
-              _id: sub._id.toString(),
-              title: `${projectTitle} (Final Documentation)`,
-              content: combinedText,
-              embedding,
-              author: authorName,
-              year: new Date(sub.createdAt || Date.now()).getFullYear(),
-              docType: "Final FYP Documentation",
-              submissionId: sub._id.toString(),
-              projectId: sub.project?._id ? sub.project._id.toString() : null
-            });
-          }
-        }
+        activeSources.push({
+          _id: src._id.toString(),
+          title: src.title,
+          content: src.content || src.title,
+          embedding,
+          author: src.author || "Final Documentation",
+          year: src.year || new Date().getFullYear(),
+          docType: src.docType || "FYP Final Documentation",
+          projectId: src.projectId?.toString() || null,
+          submissionId: src.submissionId?.toString() || null,
+          fileUrl: src.fileUrl || null
+        });
       }
 
       this.sources = activeSources;
       this.sourceEmbeddings = activeSources.map(s => s.embedding);
       this.isInitialized = true;
-      console.log(`⚡ [PlagiarismEngine] Memory cache ready with ${this.sources.length} indexed final documentation source embeddings.`);
+      console.log(`⚡ [PlagiarismEngine] Memory cache ready with ${this.sources.length} indexed final documentation source documents.`);
       return true;
     } catch (err) {
       console.warn("⚠️ [PlagiarismEngine] Initialization notice:", err.message);

@@ -40,47 +40,8 @@ const OPEN_SOURCE_ACADEMIC_DATASET = [
 /**
  * Robust extraction of plain text from docx, pdf, or text files
  */
-export async function extractTextFromFile(filePath, mimeType, filename) {
-  try {
-    const isPdf = mimeType === "application/pdf" || filename.toLowerCase().endsWith(".pdf");
-    const isDocx = mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || filename.toLowerCase().endsWith(".docx") || filename.toLowerCase().endsWith(".doc");
-
-    if (isDocx) {
-      try {
-        const mammoth = await import("mammoth");
-        const extraction = await mammoth.default.extractRawText({ path: filePath });
-        if (extraction.value && extraction.value.trim().length > 0) {
-          return extraction.value;
-        }
-      } catch (docErr) {
-        // Fallback to text reading if docx is unzipped or mock text
-      }
-      return fs.readFileSync(filePath, "utf-8");
-    } else if (isPdf) {
-      const fileBuffer = fs.readFileSync(filePath);
-      const pdfModule = await import("pdf-parse");
-      const pdf = pdfModule.default || pdfModule;
-      
-      if (typeof pdf === "function") {
-        const data = await pdf(fileBuffer);
-        return data.text || "";
-      } else if (pdf && pdf.PDFParse) {
-        const parser = new pdf.PDFParse({ data: fileBuffer });
-        const textResult = await parser.getText();
-        await parser.destroy();
-        return textResult.text || "";
-      } else {
-        console.warn("pdf-parse import did not resolve to a standard function. Attempting raw buffer text fallback.");
-        return fileBuffer.toString("utf-8");
-      }
-    } else {
-      return fs.readFileSync(filePath, "utf-8");
-    }
-  } catch (error) {
-    console.error(`Error extracting text from file ${filePath}:`, error);
-    return "";
-  }
-}
+import { extractTextFromFile } from "./textExtractor.js";
+export { extractTextFromFile };
 
 /**
  * Estimate AI likelihood based on transition patterns and density
@@ -208,13 +169,10 @@ async function runPlagiarismCompare(currentTitle, currentText, excludeSubmission
     console.warn("Plagiarism engine init warning:", initErr);
   }
 
-  // 1. Fetch other student submissions from database that are marked as final documentation during creation (or phase Final)
+  // 1. Fetch other student submissions from database that are marked as final documentation during creation of slot
   const query = {
-    fileUrl: { $exists: true, $ne: null },
-    $or: [
-      { isFinalDocumentation: true },
-      { phase: "Final" }
-    ]
+    fileUrl: { $exists: true, $nin: [null, ""] },
+    isFinalDocumentation: true
   };
   if (excludeSubmissionId) {
     query._id = { $ne: excludeSubmissionId };

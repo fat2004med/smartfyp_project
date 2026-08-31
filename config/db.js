@@ -33,6 +33,7 @@ const connectDB = async () => {
       bufferCommands: false, // Fail fast on operations if disconnected
       serverSelectionTimeoutMS: 10000, // 10s timeout to prevent serverless hang
       socketTimeoutMS: 45000,
+      maxPoolSize: process.env.MONGO_MAX_POOL_SIZE ? parseInt(process.env.MONGO_MAX_POOL_SIZE, 10) : 10,
     };
 
     console.log("🔄 Initializing new MongoDB connection pool...");

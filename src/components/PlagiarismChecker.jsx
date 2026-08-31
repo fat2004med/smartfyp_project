@@ -12,7 +12,6 @@ import {
   HelpCircle,
   Database,
   Sliders,
-  PlusCircle,
   Layers,
   Trash2,
   RefreshCw
@@ -27,10 +26,7 @@ const PlagiarismChecker = () => {
   const [scanResult, setScanResult] = useState(null);
   const [threshold, setThreshold] = useState(0.40); // 40% default threshold
   const [sources, setSources] = useState([]);
-  const [showAddSourceModal, setShowAddSourceModal] = useState(false);
-  const [newSourceTitle, setNewSourceTitle] = useState('');
-  const [newSourceContent, setNewSourceContent] = useState('');
-  const [isAddingSource, setIsAddingSource] = useState(false);
+  const [isSyncingSources, setIsSyncingSources] = useState(false);
   const [isClearingSources, setIsClearingSources] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [deleteConfirmSource, setDeleteConfirmSource] = useState(null);
@@ -50,6 +46,24 @@ const PlagiarismChecker = () => {
   useEffect(() => {
     fetchSources();
   }, []);
+
+  const handleSyncRepository = async () => {
+    setIsSyncingSources(true);
+    const toastId = toast.loading('Syncing final documentation from project records...');
+    try {
+      const res = await axios.post('/api/plagiarism/sync-repository');
+      toast.success(res.data?.message || 'Project final documentation indexed successfully!', { id: toastId });
+      if (res.data?.sources) {
+        setSources(res.data.sources);
+      } else {
+        fetchSources();
+      }
+    } catch {
+      toast.error('Failed to sync project final documentation sources.', { id: toastId });
+    } finally {
+      setIsSyncingSources(false);
+    }
+  };
 
   const handleClearAllSources = async () => {
     setIsClearingSources(true);
@@ -110,38 +124,6 @@ const PlagiarismChecker = () => {
       toast.error(err.response?.data?.error || err.response?.data?.message || 'Error occurred while scanning document.');
     } finally {
       setIsScanning(false);
-    }
-  };
-
-  const handleAddSource = async (e) => {
-    e.preventDefault();
-    if (!newSourceTitle.trim() || !newSourceContent.trim()) {
-      toast.error('Please provide both a title and text content.');
-      return;
-    }
-
-    setIsAddingSource(true);
-    const toastId = toast.loading('Indexing source document in database...');
-
-    try {
-      const res = await axios.post('/api/plagiarism/add-source', {
-        title: newSourceTitle,
-        content: newSourceContent
-      });
-
-      if (res.data?.success) {
-        toast.success(`Source "${newSourceTitle}" indexed successfully!`, { id: toastId });
-        setNewSourceTitle('');
-        setNewSourceContent('');
-        setShowAddSourceModal(false);
-        fetchSources();
-      } else {
-        throw new Error(res.data?.error || 'Failed to add source');
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to index source document.', { id: toastId });
-    } finally {
-      setIsAddingSource(false);
     }
   };
 
@@ -311,6 +293,16 @@ const PlagiarismChecker = () => {
                 <span className="text-xs font-black px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-lg">
                   {sources.length} Total
                 </span>
+                <button
+                  type="button"
+                  onClick={handleSyncRepository}
+                  disabled={isSyncingSources}
+                  title="Auto-sync FYP projects into repository"
+                  className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw size={11} className={isSyncingSources ? 'animate-spin' : ''} />
+                  Auto-Sync
+                </button>
                 {sources.length > 0 && (
                   <button
                     type="button"
@@ -325,18 +317,18 @@ const PlagiarismChecker = () => {
                 )}
               </div>
             </div>
-            <div className="max-h-48 overflow-y-auto space-y-2 pr-1 divide-y divide-gray-50">
+            <div className="max-h-56 overflow-y-auto space-y-2 pr-1 divide-y divide-gray-50">
               {sources.map((s, idx) => (
                 <div key={s.id || idx} className="pt-2 text-xs flex items-center justify-between text-gray-600 group">
-                  <div className="flex flex-col max-w-[210px]">
-                    <span className="truncate font-semibold text-gray-700">• {s.title}</span>
-                    <span className="text-[10px] text-gray-400">{s.author || 'FYP Database'}</span>
+                  <div className="flex flex-col flex-1 min-w-0 pr-2">
+                    <span className="truncate font-semibold text-gray-700" title={s.title}>• {s.title}</span>
+                    <span className="text-[10px] text-gray-400 truncate" title={s.author}>{s.author || 'Final Documentation'}</span>
                   </div>
                   {s.id && (
                     <button
                       type="button"
                       onClick={() => setDeleteConfirmSource({ id: s.id, title: s.title })}
-                      className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-600 p-1 transition-opacity cursor-pointer"
+                      className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-600 p-1 transition-opacity cursor-pointer flex-shrink-0"
                       title="Remove source"
                     >
                       <Trash2 size={13} />
@@ -345,9 +337,17 @@ const PlagiarismChecker = () => {
                 </div>
               ))}
               {sources.length === 0 && (
-                <div className="py-4 text-center">
-                  <p className="text-xs text-gray-400 font-medium">No source documents indexed yet.</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Click &quot;+ Add Source&quot; to index your FYP projects into the repository.</p>
+                <div className="py-5 text-center space-y-2">
+                  <p className="text-xs text-gray-400 font-medium">No project final documentation indexed yet.</p>
+                  <button
+                    type="button"
+                    onClick={handleSyncRepository}
+                    disabled={isSyncingSources}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} className={isSyncingSources ? 'animate-spin' : ''} />
+                    Sync Project Final Documentation
+                  </button>
                 </div>
               )}
             </div>
@@ -516,70 +516,6 @@ const PlagiarismChecker = () => {
         </div>
       </div>
 
-      {/* Add Source Document Modal */}
-      {showAddSourceModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-gray-100">
-            <div className="flex items-center justify-between border-b pb-4">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Add Source Document</h3>
-                <p className="text-xs text-gray-400">Stores document into database for future comparisons</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAddSourceModal(false)}
-                className="text-gray-400 hover:text-gray-600 font-bold text-sm p-1"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleAddSource} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-gray-500 block mb-1">Document Title</label>
-                <input
-                  type="text"
-                  required
-                  value={newSourceTitle || ''}
-                  onChange={(e) => setNewSourceTitle(e.target.value)}
-                  placeholder="e.g. Project Alpha Final Documentation"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-500 block mb-1">Document Text / Summary Content</label>
-                <textarea
-                  required
-                  rows={6}
-                  value={newSourceContent || ''}
-                  onChange={(e) => setNewSourceContent(e.target.value)}
-                  placeholder="Paste documentation text, abstract, or chapter sections here..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddSourceModal(false)}
-                  className="px-4 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100 rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isAddingSource}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2"
-                >
-                  {isAddingSource ? 'Indexing...' : 'Save & Index Document'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Clear All Sources Confirmation Modal */}
       <ConfirmModal
         isOpen={showClearConfirm}
@@ -587,7 +523,7 @@ const PlagiarismChecker = () => {
         onConfirm={handleClearAllSources}
         isLoading={isClearingSources}
         title="Clear All Indexed Sources"
-        message="Are you sure you want to clear all indexed source documents? Plagiarism will only be checked against documents you manually upload or new project archives in the database."
+        message="Are you sure you want to clear all indexed source documents? You can auto-sync the FYP projects repository at any time."
         confirmText="Yes, Clear All"
         cancelText="Cancel"
         variant="danger"

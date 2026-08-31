@@ -58,7 +58,7 @@ export async function seedData() {
       { name: "Bob Jones (Team Member)", email: "member@smartfyp.com", password: commonPassword, role: "Team Member", dept: csDept._id },
       { name: "Zain Ali (Team Leader)", email: "leader2@smartfyp.com", password: commonPassword, role: "Team Leader", dept: seDept._id },
       { name: "Sara Khan (Team Member)", email: "member2@smartfyp.com", password: commonPassword, role: "Team Member", dept: seDept._id },
-      { name: "Test User", email: "test@test.com", password: "password", role: "Team Member", dept: csDept._id },
+      { name: "Test User", email: "test@test.com", password: commonPassword, role: "Team Member", dept: csDept._id },
     ];
 
     const existingUsersCount = await User.countDocuments({});

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -20,7 +20,8 @@ import {
   ExternalLink,
   Mail,
   Phone,
-  Download
+  Download,
+  Lock
 } from 'lucide-react';
 import DocumentViewerModal from './DocumentViewerModal';
 import { triggerDirectDownload } from '../utils/fileHelpers';
@@ -29,6 +30,10 @@ import ConfirmModal from './ConfirmModal';
 const ProjectRecords = () => {
   const { user } = useAuth();
   const activeRole = localStorage.getItem('activeDashboardRole') || (user?.role ? user.role.split(',')[0].trim() : '');
+  const isHOD = activeRole === 'HOD' || (!activeRole && Boolean(user?.role?.includes('HOD')));
+  const isSupervisor = activeRole === 'Supervisor' || (!activeRole && Boolean(user?.role?.includes('Supervisor')));
+  const isDepartmentLocked = (isHOD || isSupervisor) && activeRole !== 'Admin';
+
   const [selectedProject, setSelectedProject] = useState(null);
   const [viewerDoc, setViewerDoc] = useState({ isOpen: false, fileUrl: '', title: '' });
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,6 +80,54 @@ const ProjectRecords = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   const statuses = ["All Status", "Proposed", "Active", "Approved", "Completed", "Rejected", "Published"];
+
+  // Find user's department name
+  const userDepartmentName = useMemo(() => {
+    if (!user) return '';
+    if (user.department && typeof user.department === 'object' && user.department.name) {
+      return user.department.name;
+    }
+    if (user.dept && typeof user.dept === 'object' && user.dept.name) {
+      return user.dept.name;
+    }
+    const deptIdOrName = user.department || user.dept;
+    if (deptIdOrName) {
+      const match = departments.find(d => 
+        String(d._id) === String(deptIdOrName) || 
+        d.name?.toLowerCase() === String(deptIdOrName).toLowerCase()
+      );
+      if (match) return match.name;
+    }
+    if (isHOD) {
+      const hodDept = departments.find(d => 
+        String(d.hod?._id || d.hod) === String(user._id)
+      );
+      if (hodDept) return hodDept.name;
+    }
+    if (typeof deptIdOrName === 'string' && deptIdOrName.length > 2 && !deptIdOrName.match(/^[0-9a-fA-F]{24}$/)) {
+      return deptIdOrName;
+    }
+    return '';
+  }, [user, departments, isHOD]);
+
+  // Synchronize locked department into filters
+  useEffect(() => {
+    if (isDepartmentLocked && userDepartmentName) {
+      setFilters(prev => ({ ...prev, department: userDepartmentName }));
+    }
+  }, [isDepartmentLocked, userDepartmentName]);
+
+  // Dynamically extract available years from projects
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set();
+    projects.forEach(p => {
+      const y = p.academicYear || p.year;
+      if (y) yearsSet.add(String(y));
+    });
+    const currentY = new Date().getFullYear();
+    [currentY, currentY - 1, currentY - 2, currentY - 3].forEach(y => yearsSet.add(String(y)));
+    return Array.from(yearsSet).filter(Boolean).sort((a, b) => b.localeCompare(a));
+  }, [projects]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -211,13 +264,14 @@ const ProjectRecords = () => {
 
   const openCreateModal = () => {
     setEditingProject(null);
+    const userDeptId = departments.find(d => d.name === userDepartmentName)?._id || user?.department?._id || user?.department || user?.dept?._id || user?.dept || '';
     setProjectForm({
       title: '',
       teamName: '',
       description: '',
-      department: '',
-      supervisor: '',
-      hod: '',
+      department: (isDepartmentLocked && userDeptId) ? userDeptId : '',
+      supervisor: isSupervisor ? user?._id : '',
+      hod: isHOD ? user?._id : '',
       teamLeader: '',
       members: [],
       academicYear: new Date().getFullYear().toString(),
@@ -295,18 +349,75 @@ const ProjectRecords = () => {
     }
   };
 
-  const filteredProjects = projects.filter(p => {
-    const matchesSearch = p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         p.teamName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         p.supervisor?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (p.technologies && p.technologies.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())));
-    
-    const matchesDept = filters.department === 'All Departments' || p.department?.name === filters.department;
-    const matchesYear = filters.year === 'All Years' || String(p.year || p.academicYear) === filters.year;
-    const matchesStatus = filters.status === 'All Status' || p.status === filters.status;
-    
-    return matchesSearch && matchesDept && matchesYear && matchesStatus;
-  });
+  const filteredProjects = useMemo(() => {
+    return projects.filter(p => {
+      // 1. Role-specific department and assignment filtering for HOD & Supervisor
+      if (isDepartmentLocked && userDepartmentName) {
+        const pDeptName = p.department?.name || (typeof p.department === 'string' ? p.department : '');
+        const isMyDept = pDeptName && pDeptName.toLowerCase() === userDepartmentName.toLowerCase();
+        const isMyAssigned = String(p.supervisor?._id || p.supervisor || '') === String(user?._id || '');
+
+        if (isHOD && !isMyDept) {
+          return false;
+        }
+        if (isSupervisor && !isMyDept && !isMyAssigned) {
+          return false;
+        }
+      }
+
+      // 2. Search query matching across all relevant fields
+      const q = (searchQuery || '').trim().toLowerCase();
+      if (q) {
+        const titleMatch = p.title?.toLowerCase().includes(q);
+        const descMatch = p.description?.toLowerCase().includes(q);
+        const abstractMatch = p.abstract?.toLowerCase().includes(q);
+        const teamMatch = p.teamName?.toLowerCase().includes(q);
+        const superMatch = p.supervisor?.name?.toLowerCase().includes(q) || p.supervisor?.email?.toLowerCase().includes(q);
+        const leaderMatch = p.teamLeader?.name?.toLowerCase().includes(q) || p.teamLeader?.email?.toLowerCase().includes(q);
+        const deptMatch = p.department?.name?.toLowerCase().includes(q);
+        const batchMatch = p.batch?.toLowerCase().includes(q);
+        const yearMatch = String(p.academicYear || p.year || '').toLowerCase().includes(q);
+        const statusMatch = p.status?.toLowerCase().includes(q);
+        const techMatch = Array.isArray(p.technologies) 
+          ? p.technologies.some(t => typeof t === 'string' && t.toLowerCase().includes(q))
+          : (typeof p.technologies === 'string' && p.technologies.toLowerCase().includes(q));
+        const tagMatch = Array.isArray(p.tags) && p.tags.some(t => typeof t === 'string' && t.toLowerCase().includes(q));
+        const memberMatch = Array.isArray(p.members) && p.members.some(m => 
+          m?.name?.toLowerCase().includes(q) || m?.email?.toLowerCase().includes(q)
+        );
+
+        const matchesSearch = titleMatch || descMatch || abstractMatch || teamMatch || superMatch || leaderMatch || deptMatch || batchMatch || yearMatch || statusMatch || techMatch || tagMatch || memberMatch;
+        if (!matchesSearch) return false;
+      }
+
+      // 3. Department filter (when not locked, e.g. for Admin)
+      if (!isDepartmentLocked && filters.department && filters.department !== 'All Departments') {
+        const pDeptName = p.department?.name || (typeof p.department === 'string' ? p.department : '');
+        const pDeptId = p.department?._id || p.department;
+        const targetDept = filters.department;
+        if (pDeptName !== targetDept && String(pDeptId) !== String(targetDept)) {
+          return false;
+        }
+      }
+
+      // 4. Academic Year filter
+      if (filters.year && filters.year !== 'All Years') {
+        const pYearStr = String(p.academicYear || p.year || '');
+        if (pYearStr !== filters.year && !pYearStr.includes(filters.year)) {
+          return false;
+        }
+      }
+
+      // 5. Status filter
+      if (filters.status && filters.status !== 'All Status') {
+        if (p.status?.toLowerCase() !== filters.status.toLowerCase()) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [projects, searchQuery, filters, isDepartmentLocked, userDepartmentName, isHOD, isSupervisor, user]);
 
   return (
     <div className="w-full max-w-none space-y-6 pb-10 px-0 lg:px-0">
@@ -329,7 +440,13 @@ const ProjectRecords = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Project Records</h1>
-          <p className="text-gray-500 mt-1">Comprehensive database of all academic projects</p>
+          <p className="text-gray-500 mt-1">
+            {isHOD && userDepartmentName 
+              ? `Department Project Database — ${userDepartmentName}`
+              : isSupervisor && userDepartmentName
+                ? `Department & Assigned Projects — ${userDepartmentName}`
+                : 'Comprehensive database of all academic projects'}
+          </p>
         </div>
       </div>
 
@@ -340,22 +457,51 @@ const ProjectRecords = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
               type="text"
-              placeholder="Search by title, team, supervisor, technology..."
+              placeholder="Search by title, team, supervisor, technology, year..."
               value={searchQuery || ''}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+              className="w-full pl-10 pr-9 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
             />
+            {searchQuery && (
+              <button 
+                type="button" 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Clear search"
+              >
+                <X size={15} />
+              </button>
+            )}
           </div>
           <div className="relative">
-            <select 
-              value={filters.department}
-              onChange={(e) => setFilters({...filters, department: e.target.value})}
-              className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm pr-10"
-            >
-              <option>All Departments</option>
-              {departments.map(d => <option key={d._id}>{d.name}</option>)}
-            </select>
-            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            {isDepartmentLocked ? (
+              <div className="relative" title={`Department locked to ${userDepartmentName || 'your assigned department'}`}>
+                <select 
+                  value={userDepartmentName || filters.department}
+                  disabled={true}
+                  className="w-full appearance-none bg-gray-100/90 border border-gray-200 rounded-xl px-4 py-2.5 outline-none text-sm text-gray-700 font-semibold cursor-not-allowed pr-10"
+                >
+                  <option value={userDepartmentName || filters.department}>
+                    {userDepartmentName || 'Your Department'}
+                  </option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-gray-400 pointer-events-none">
+                  <Lock size={14} className="text-gray-400" />
+                </div>
+              </div>
+            ) : (
+              <div className="relative">
+                <select 
+                  value={filters.department}
+                  onChange={(e) => setFilters({...filters, department: e.target.value})}
+                  className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm pr-10 text-gray-800"
+                >
+                  <option value="All Departments">All Departments</option>
+                  {departments.map(d => <option key={d._id} value={d.name}>{d.name}</option>)}
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+            )}
           </div>
           <div className="relative">
             <select 
@@ -363,10 +509,10 @@ const ProjectRecords = () => {
               onChange={(e) => setFilters({...filters, year: e.target.value})}
               className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm pr-10"
             >
-              <option>All Years</option>
-              <option>2024</option>
-              <option>2023</option>
-              <option>2022</option>
+              <option value="All Years">All Years</option>
+              {availableYears.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
             </select>
             <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
@@ -376,12 +522,9 @@ const ProjectRecords = () => {
               onChange={(e) => setFilters({...filters, status: e.target.value})}
               className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm pr-10"
             >
-              <option>All Status</option>
-              <option>Proposed</option>
-              <option>Active</option>
-              <option>Approved</option>
-              <option>Completed</option>
-              <option>Rejected</option>
+              {statuses.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
             </select>
             <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
@@ -404,7 +547,7 @@ const ProjectRecords = () => {
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Team & Supervisor</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Academic Info</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status & Grade</th>
-                {['Supervisor', 'HOD', 'Admin'].includes(user?.role) && (
+                {['Supervisor', 'HOD', 'Admin'].includes(activeRole || user?.role) && (
                   <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Documentation</th>
                 )}
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>

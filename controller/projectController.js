@@ -22,7 +22,16 @@ export const getProjects = async (req, res) => {
           query._id = { $in: [] }; // No department, no data
         }
       } else if (activeRole === "Supervisor") {
-        query.supervisor = req.user._id;
+        let deptId = req.user.department?._id || req.user.department;
+        if (!deptId) {
+          const dept = await Department.findOne({ hod: req.user._id });
+          if (dept) deptId = dept._id;
+        }
+        if (deptId) {
+          query.$or = [{ supervisor: req.user._id }, { department: deptId }];
+        } else {
+          query.supervisor = req.user._id;
+        }
       } else {
         // Team Leader / Team Member
         const userProject = await Project.findOne({ 

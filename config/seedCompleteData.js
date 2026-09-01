@@ -13,9 +13,8 @@ export async function seedCompleteData() {
     const deptConfigs = [
       { name: "Computer Science", description: "Department of Computer Science & Software Systems" },
       { name: "Software Engineering", description: "Department of Software Engineering & Architecture" },
-      { name: "Artificial Intelligence & Data Science", description: "Department of Artificial Intelligence & Machine Learning" },
-      { name: "Cyber Security & Information Assurance", description: "Department of Cyber Security & Cryptography" },
-      { name: "Electrical & Electronics Engineering", description: "Department of Electrical & Embedded Systems" }
+      { name: "Artificial Intelligence", description: "Department of Artificial Intelligence & Machine Learning" },
+      { name: "Cyber security", description: "Department of Cyber Security & Cryptography" }
     ];
 
     const departmentMap = {};
@@ -78,11 +77,35 @@ export async function seedCompleteData() {
         interests: ["Agile Methodologies", "Software Quality Assurance", "DevOps"]
       },
       {
+        name: "Dr. Kamran Malik",
+        email: "hod.ai@smartfyp.edu",
+        password: defaultPassword,
+        role: "HOD, Supervisor",
+        department: departmentMap["Artificial Intelligence"]?._id,
+        isFirstLogin: false,
+        isActive: true,
+        phone: "+92-301-1122334",
+        designation: "Associate Professor & HOD",
+        interests: ["Artificial Intelligence", "Deep Learning", "Autonomous Systems"]
+      },
+      {
+        name: "Dr. Usman Khalid",
+        email: "hod.cyber@smartfyp.edu",
+        password: defaultPassword,
+        role: "HOD, Supervisor",
+        department: departmentMap["Cyber security"]?._id,
+        isFirstLogin: false,
+        isActive: true,
+        phone: "+92-302-2233445",
+        designation: "Associate Professor & HOD",
+        interests: ["Cybersecurity", "Network Security", "Cryptography"]
+      },
+      {
         name: "Dr. Tariq Mahmood",
         email: "supervisor.ai@smartfyp.edu",
         password: defaultPassword,
         role: "Supervisor",
-        department: departmentMap["Artificial Intelligence & Data Science"]?._id,
+        department: departmentMap["Artificial Intelligence"]?._id,
         isFirstLogin: false,
         isActive: true,
         phone: "+92-303-6677889",
@@ -106,7 +129,7 @@ export async function seedCompleteData() {
         email: "supervisor.cyber@smartfyp.edu",
         password: defaultPassword,
         role: "Supervisor",
-        department: departmentMap["Cyber Security & Information Assurance"]?._id,
+        department: departmentMap["Cyber security"]?._id,
         isFirstLogin: false,
         isActive: true,
         phone: "+92-305-8899001",
@@ -133,6 +156,14 @@ export async function seedCompleteData() {
     if (departmentMap["Software Engineering"] && userMap["hod.se@smartfyp.edu"]) {
       departmentMap["Software Engineering"].hod = userMap["hod.se@smartfyp.edu"]._id;
       await departmentMap["Software Engineering"].save();
+    }
+    if (departmentMap["Artificial Intelligence"] && userMap["hod.ai@smartfyp.edu"]) {
+      departmentMap["Artificial Intelligence"].hod = userMap["hod.ai@smartfyp.edu"]._id;
+      await departmentMap["Artificial Intelligence"].save();
+    }
+    if (departmentMap["Cyber security"] && userMap["hod.cyber@smartfyp.edu"]) {
+      departmentMap["Cyber security"].hod = userMap["hod.cyber@smartfyp.edu"]._id;
+      await departmentMap["Cyber security"].save();
     }
 
     // 3. Seed or find Student Users (Leaders and Members)
@@ -213,7 +244,7 @@ export async function seedCompleteData() {
         email: "leader.ai@smartfyp.edu",
         password: defaultPassword,
         role: "Team Leader",
-        department: departmentMap["Artificial Intelligence & Data Science"]?._id,
+        department: departmentMap["Artificial Intelligence"]?._id,
         studentRegNo: "2021-AI-015",
         phone: "+92-306-7788990",
         isFirstLogin: false,
@@ -224,7 +255,7 @@ export async function seedCompleteData() {
         email: "member1.ai@smartfyp.edu",
         password: defaultPassword,
         role: "Team Member",
-        department: departmentMap["Artificial Intelligence & Data Science"]?._id,
+        department: departmentMap["Artificial Intelligence"]?._id,
         studentRegNo: "2021-AI-016",
         phone: "+92-307-8899001",
         isFirstLogin: false,
@@ -237,7 +268,7 @@ export async function seedCompleteData() {
         email: "leader.cy@smartfyp.edu",
         password: defaultPassword,
         role: "Team Leader",
-        department: departmentMap["Cyber Security & Information Assurance"]?._id,
+        department: departmentMap["Cyber security"]?._id,
         studentRegNo: "2021-CY-088",
         phone: "+92-308-9900112",
         isFirstLogin: false,
@@ -248,22 +279,9 @@ export async function seedCompleteData() {
         email: "member1.cy@smartfyp.edu",
         password: defaultPassword,
         role: "Team Member",
-        department: departmentMap["Cyber Security & Information Assurance"]?._id,
+        department: departmentMap["Cyber security"]?._id,
         studentRegNo: "2021-CY-089",
         phone: "+92-309-0011223",
-        isFirstLogin: false,
-        isActive: true
-      },
-
-      // Team 5 (EE)
-      {
-        name: "Omar Farooq",
-        email: "leader.ee@smartfyp.edu",
-        password: defaultPassword,
-        role: "Team Leader",
-        department: departmentMap["Electrical & Electronics Engineering"]?._id,
-        studentRegNo: "2021-EE-024",
-        phone: "+92-310-1122334",
         isFirstLogin: false,
         isActive: true
       }
@@ -415,7 +433,7 @@ export async function seedCompleteData() {
       {
         teamName: "TEAM-AI-2025-09",
         title: "AgriSense: Autonomous Agricultural Rover with Edge Computer Vision & Soil Telemetry",
-        department: departmentMap["Artificial Intelligence & Data Science"]?._id,
+        department: departmentMap["Artificial Intelligence"]?._id,
         supervisor: userMap["supervisor.ai@smartfyp.edu"]?._id,
         hod: userMap["hod.cs@smartfyp.edu"]?._id,
         teamLeader: userMap["leader.ai@smartfyp.edu"]?._id,
@@ -459,7 +477,7 @@ export async function seedCompleteData() {
       {
         teamName: "TEAM-CY-2025-22",
         title: "SentinelZero: AI-Driven Zero-Trust Network Access & Threat Anomaly Detection",
-        department: departmentMap["Cyber Security & Information Assurance"]?._id,
+        department: departmentMap["Cyber security"]?._id,
         supervisor: userMap["supervisor.cyber@smartfyp.edu"]?._id,
         hod: userMap["hod.cs@smartfyp.edu"]?._id,
         teamLeader: userMap["leader.cy@smartfyp.edu"]?._id,
@@ -499,40 +517,6 @@ export async function seedCompleteData() {
             createdAt: new Date(Date.now() - 12 * 86400000)
           }
         ]
-      },
-      {
-        teamName: "TEAM-EE-2025-07",
-        title: "Intelligent Microgrid Energy Management System with Predictive Load Optimization",
-        department: departmentMap["Electrical & Electronics Engineering"]?._id,
-        supervisor: userMap["supervisor.ai@smartfyp.edu"]?._id,
-        hod: userMap["hod.cs@smartfyp.edu"]?._id,
-        teamLeader: userMap["leader.ee@smartfyp.edu"]?._id,
-        members: [],
-        status: "Active",
-        isPublic: false,
-        isApprovedBySupervisor: true,
-        isApprovedByHOD: false,
-        isApprovedByAdmin: false,
-        progress: 45,
-        semester: 7,
-        currentPhase: "Analysis",
-        academicYear: "2025-2026",
-        year: 2025,
-        batch: "2022-2026",
-        duration: "1 Year",
-        grade: "B+",
-        score: 82,
-        technologies: ["MATLAB Simulink", "Python", "Prophet", "Modbus", "Node.js", "InfluxDB"],
-        tags: ["Renewable Energy", "Smart Grid", "Time Series Forecasting", "Microgrid"],
-        description: "An intelligent microgrid controller that optimizes distributed solar PV, battery energy storage systems (BESS), and diesel generator dispatch using predictive weather forecasts and dynamic electricity tariff models.",
-        abstract: "Variable renewable generation causes instability and financial penalties in microgrid deployments. This project pairs time-series solar irradiance predictors with linear optimization solvers to automate battery charge/discharge cycles and curtail grid peak-demand fees.",
-        outcomes: `1. Predictive load dispatch model reducing daily operational energy costs by 28%.
-2. Modbus/TCP hardware communication layer for inverter and battery monitoring.
-3. Web dashboard with interactive power flow diagrams and generation forecasts.`,
-        githubLink: "https://github.com/smartfyp-org/microgrid-energy-manager",
-        liveLink: "https://smartgrid-ems.demo.smartfyp.org",
-        isLiveLinkPublic: false,
-        fileUrl: "/uploads/proposals/Microgrid_Energy_Management_Proposal.pdf"
       }
     ];
 

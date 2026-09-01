@@ -17,7 +17,7 @@ export async function seedData() {
   isSeeding = true;
   try {
     // 1. Seed Departments
-    const deptNames = ["Computer Science", "Software Engineering", "Information Technology", "Artificial Intelligence", "Cyber Security"];
+    const deptNames = ["Computer Science", "Software Engineering", "Information Technology", "Artificial Intelligence", "Cyber security"];
     const depts = [];
     const existingDeptsCount = await Department.countDocuments({});
     

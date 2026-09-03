@@ -48,8 +48,8 @@ $$\text{Team Member} \longrightarrow \text{Team Leader} \longrightarrow \text{Su
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│ Team Member  │ ──> │ Team Leader  │ ──> │  Supervisor  │ ──> │     HOD      │ ──> │    Admin     │
-│  (Execution) │     │ (Management) │     │ (Mentorship) │     │ (Dept Sign)  │     │ (Final Sign) │
+│ Team Member  │    ──>  │ Team Leader  │   ──>  │  Supervisor  │  ──>  │     HOD      │  ──> │    Admin     │
+│  (Execution) │         │ (Management) │        │ (Mentorship) │       │ (Dept Sign)  │       │ (Final Sign) │
 └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
 ```
 

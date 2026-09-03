@@ -17,8 +17,76 @@ Built with a unified **Express + React 19 SPA** architecture, SmartFYP streamlin
 
 ---
 
+## 🎯 Problem Statement
+
+Managing Final Year Projects (FYPs) in colleges is often manual and disorganized. The whole process—from submitting proposals and assigning supervisors to tracking progress and grading—causes delays, lost files, and poor communication among HODs, teachers, team leaders, and students. 
+
+The biggest issue is that colleges do not have a central record of past projects. Because of this:
+- **Redundant Work**: Junior students often repeat old work instead of exploring new research gaps and fresh ideas.
+- **Lost Career Opportunities**: Outside companies and recruiters cannot see what students have built to offer them jobs or internships.
+- **Inefficient Coordination**: Current manual systems lack streamlined channels to publish announcements, share structured feedback, brainstorm innovative ideas with AI, check submitted documents for plagiarism, or assign tasks across different team levels.
+
+---
+
+## 💡 How SmartFYP Solves This Problem
+
+SmartFYP fixes these critical bottlenecks by providing a complete, easy-to-use web platform that manages the entire FYP journey from inception to graduation:
+
+- **Secure, Multi-Tenant Architecture**: Keeps institutional and departmental data isolated and secure while granting tailored, role-specific dashboards and approval steps from HODs down to students.
+- **Frictionless Communication**: Eliminates communication silos through automated email alerts, real-time in-app system notifications, dynamic announcements, and inline review feedback channels.
+- **Flexible Task & Milestone Management**: Features a powerful task engine allowing HODs, supervisors, and team leaders to assign individual tasks to specific students or distribute formal milestone assignments to entire cohorts.
+- **Built-in Plagiarism Checker**: Automatically scans and compares student submissions against the institution's historical database records to preserve academic integrity.
+- **AI-Driven Project Ideation**: Recommends fresh, innovative project ideas based on student interest queries, skills, and target research domains.
+- **Public Projects Showcase Gallery**: Serves as a digital permanent archive of all completed, vetted projects—empowering juniors to learn from past work and enabling hiring managers to discover and recruit top student talent.
+
+---
+
+## 🏗️ Solution Architecture of Working
+
+The platform operates on a structured multi-tier workflow:
+$$\text{Team Member} \longrightarrow \text{Team Leader} \longrightarrow \text{Supervisor} \longrightarrow \text{HOD} \longrightarrow \text{Admin}$$
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│ Team Member  │ ──> │ Team Leader  │ ──> │  Supervisor  │ ──> │     HOD      │ ──> │    Admin     │
+│  (Execution) │     │ (Management) │     │ (Mentorship) │     │ (Dept Sign)  │     │ (Final Sign) │
+└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
+```
+
+1. **User & Department Provisioning**:
+   - The **College Admin** creates academic departments and appoints respective **HODs**.
+   - **HODs** create Student, Team Leader, and Supervisor accounts within their respective departments, automatically triggering welcome onboarding emails with temporary credentials that require a first-time password reset upon login.
+   - HODs subsequently manage team allocations by generating unique **Project IDs**, assigning project titles, designated Supervisors, Team Leaders, and Team Members.
+
+2. **Role-Specific Dashboards & Centralized Living Records**:
+   - Each stakeholder accesses role-specific dashboards displaying allocated team rosters and deliverable progress.
+   - **Team Leaders** manage living project profiles—updating GitHub repository links, live application deployment URLs, problem statements, technology stacks, and proposal documents.
+   - Project profiles are instantly synchronized into the centralized record system, accessible across Admin, HOD, and Supervisor tiers based on relevance and departmental jurisdiction.
+
+3. **Hierarchical Deliverable Review & Multi-Tier Approvals**:
+   - Team Members or Team Leaders create submission slots on their dashboards for milestone deliverables (e.g., SRS, SDS, UML diagrams, interim reports, and final documentation).
+   - Submissions route through a strict hierarchical review chain requiring approval at each stage from the **Team Leader**, the **Supervisor**, and—in the case of final documentation—the **HOD** and **Admin**.
+   - Reviewers can evaluate submissions, grade performance, provide detailed revision notes, or endorse the work to advance to the next tier.
+
+4. **Semester Completion & Public Showcase Publishing**:
+   - Once final capstone documentation receives **Admin** sign-off at semester completion, the **Team Leader** marks the project status as **Completed**.
+   - With completion verified, the **Admin** publishes the project's abstract, media, tech stack, and documentation directly to the **Public Projects Showcase Gallery** for academic reference and industry recruiter discovery.
+
+5. **Integrated Platform Capabilities**:
+   - **Granular Task Management**: Supervisors assign tasks to Team Leaders and Members; Team Leaders assign internal sprint items to Members.
+   - **Multi-User Assignment Distribution**: Milestone rubrics and templates are distributed downward from higher to lower tiers with scheduled deadlines.
+   - **Automated Notifications & Dynamic Announcements**: Real-time alerts notify users of pending reviews, grade releases, and broadcasts across institutional, departmental, or team levels.
+   - **Automated Database Plagiarism Checker**: Cross-compares submitted documents directly against the institution's historical database records to ensure zero cross-batch duplication.
+   - **User Profile Management**: Self-service profile updates for password management, contact details, and research interest queries.
+   - **AI-Driven Project Idea Recommendation Engine**: Assists students in identifying novel research gaps and tailored capstone topics matched to their technical domain.
+
+---
+
 ## Table of Contents
 
+- [Problem Statement](#-problem-statement)
+- [How SmartFYP Solves This Problem](#-how-smartfyp-solves-this-problem)
+- [Solution Architecture of Working](#️-solution-architecture-of-working)
 - [System Architecture](#system-architecture)
 - [Key Features by Role](#key-features-by-role)
 - [Intelligent Core Engines](#intelligent-core-engines)

@@ -255,21 +255,53 @@ The platform implements a multi-tiered hierarchical Role-Based Access Control (R
 
 ---
 
-## 4. Key Workflows & Two-Tier Approval Model
+## 4. Multi-Tier Approval Workflow & Intelligent Capabilities
 
-### A. Project Proposal Approval Pipeline
-1. **Initiation**: Student Team or Supervisor submits a new project proposal.
-2. **First-Tier Review (Supervisor)**: The designated Supervisor inspects scope, feasibility, and objectives. The Supervisor can approve or reject with comments.
-3. **Second-Tier Review (HOD)**: Once supervisor-approved, the proposal enters the HOD queue. The HOD evaluates departmental standards and grants final approval.
-4. **Activation**: The project status changes to `Active`, unlocking milestone assignment submissions and sprint task tracking.
+### A. Structured Multi-Tier Approval Workflow
+SmartFYP operates on a strictly governed hierarchical workflow chain across all organizational levels:
+$$\text{Team Member} \longrightarrow \text{Team Leader} \longrightarrow \text{Supervisor} \longrightarrow \text{HOD} \longrightarrow \text{Admin}$$
 
-### B. Milestone Documentation & Plagiarism Review Pipeline
-1. **Submission**: Team Leader or Team Member submits report/code documentation.
-2. **Similarity Analysis**: The system computes similarity and scans for AI-generated text.
-3. **Supervisor Evaluation**: The Supervisor reviews content, checks plagiarism scores, and either:
-   - Requests revisions (re-opening submission for students).
-   - Approves and forwards the documentation to the HOD.
-4. **HOD Final Sign-off**: HOD reviews documentation and signs off. Admin can inspect or override at any stage.
+1. **Institutional & Departmental Initialization**:
+   - The **College Admin** creates academic departments and assigns respective **HODs**.
+   - **HODs** register and provision Student, Team Leader, and Supervisor accounts within their respective departments.
+   - The platform dispatches automated welcome emails containing temporary credentials, enforcing a mandatory first-time password reset for account activation.
+   - HODs orchestrate team formations: generating unique Project IDs, assigning project titles, designated Supervisors, Team Leaders, and allocated Team Members.
+
+2. **Role-Specific Dashboards & Centralized Project Record**:
+   - Each stakeholder accesses a customized dashboard reflecting their assigned projects and operational scope.
+   - **Team Leaders** maintain living project profiles—managing GitHub repositories, live deployment URLs, problem statements, technology stacks, and proposal documents.
+   - All updates are automatically aggregated into a centralized institutional repository visible to Admin, HOD, and Supervisor tiers based on relevance and departmental jurisdiction.
+
+3. **Hierarchical Deliverable Submission & Multi-Tier Review Chain**:
+   - Team Members or Team Leaders initiate submission slots on their project dashboard for required deliverables (such as SRS, SDS, UML diagrams, interim progress reports, or final documentation).
+   - Submissions advance sequentially through the hierarchical review pipeline, requiring formal evaluation and sign-off at each tier:
+     - **Step 1 (Team Leader)**: Reviews deliverables uploaded by internal team members prior to supervisor submission.
+     - **Step 2 (Supervisor)**: Performs technical scrutiny, grades progress, provides inline feedback, and approves the deliverable or requests revisions.
+     - **Step 3 (HOD)**: Evaluates departmental compliance and endorses the supervisor-approved submission.
+     - **Step 4 (Admin - Final Documentation)**: For capstone final documentation, the Admin provides the institutional final approval.
+
+4. **Project Completion & Public Showcase Publishing**:
+   - Following Admin approval of the final documentation at semester completion, the **Team Leader** marks the project status as **Completed**.
+   - With completion verified, the **Admin** holds the exclusive authority to publish the project's title, abstract, tech stack, and documentation to the **Public Projects Showcase Gallery**—preserving institutional memory, preventing duplicate capstone work by juniors, and providing recruiter visibility.
+
+5. **Hierarchical Task & Assignment Distribution**:
+   - **Individual Task Management**: Supervisors assign sprint tasks and action items to Team Leaders and Team Members; Team Leaders assign internal work packages directly to Members.
+   - **Multi-User Assignment Distribution**: Higher tiers (Admin, HOD, Supervisor) issue milestone assignments with rubrics and deadlines downward to student cohorts.
+   - **Real-Time Notification & Dynamic Announcements**: Automated notifications alert users of pending reviews, grade releases, and submission deadlines, while system-wide and departmental announcements ensure seamless institutional communication.
+
+---
+
+### B. Automated Document Plagiarism Checker (Against Database Records)
+- **Centralized Database Comparison**: Whenever student teams submit project proposals, SRS, SDS, or final documentation, the built-in Plagiarism Checker compares the submitted documents directly against all historical and active FYP records stored in the institution's database.
+- **Academic Originality & Cross-Batch Deduplication**: Detects textual and semantic similarities between current submissions and previous graduation batches, preventing junior cohorts from duplicating past capstone work.
+- **Similarity & Authenticity Metrics**: Calculates similarity index percentages, flags matching project excerpts, and generates an audit report accessible to Supervisors, HODs, and Admins to ensure academic integrity before advancing submissions through the approval pipeline.
+
+---
+
+### C. AI-Driven FYP Project Idea Recommendations (Query & Domain-Based)
+- **Student Interest & Domain Querying**: Students and junior teams can input their personal technical interests, preferred programming frameworks, and target domains (e.g., Artificial Intelligence, Cybersecurity, IoT, Blockchain, HealthTech).
+- **Novelty & Gap Analysis**: The AI recommendation engine evaluates the query against the centralized repository of past institution projects to identify unexplored research gaps and novel problem areas.
+- **Structured Concept Generation**: Delivers high-quality, practical project concepts complete with proposed titles, problem statements, recommended technology stacks, and research objectives—guiding students toward innovative, high-impact final year projects.
 
 ---
 

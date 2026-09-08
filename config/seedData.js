@@ -43,8 +43,8 @@ export async function seedData() {
     const itDept = depts[2] || { _id: null };
 
     // 2. Seed Users
-    const commonPassword = "password123";
-    const adminPassword = "adminp@ssword123";
+    const commonPassword = "Password@123";
+    const adminPassword = "Password@123";
 
     const usersToSeed = [
       { name: "Global Admin", email: "fat2004med@gmail.com", password: adminPassword, role: "Admin" },

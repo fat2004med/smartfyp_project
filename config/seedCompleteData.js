@@ -27,8 +27,8 @@ export async function seedCompleteData() {
       departmentMap[d.name] = dept;
     }
 
-    const defaultPassword = "password123";
-    const adminPassword = "adminp@ssword123";
+    const defaultPassword = "Password@123";
+    const adminPassword = "Password@123";
 
     // 2. Seed or find Key Faculty and Admin Users
     const facultyUsersData = [

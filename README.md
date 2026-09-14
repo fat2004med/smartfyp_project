@@ -8,12 +8,19 @@
 [![Express](https://img.shields.io/badge/Backend-Express%204.21-lightgrey.svg)](https://expressjs.com/)
 [![ML Engine](https://img.shields.io/badge/ML-Fine--Tuned%20SentenceTransformers-blue.svg)](https://huggingface.co/)
 [![Testing](https://img.shields.io/badge/Testing-Vitest%20(25%20Passed)-green.svg)](https://vitest.dev/)
+[![Live Deployment](https://img.shields.io/badge/Live%20Demo-Railway.app-0B0D0E?logo=railway)](https://smartfypproject-production.up.railway.app)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-fat2004med%2Fsmartfyp__project-181717?logo=github)](https://github.com/fat2004med/smartfyp_project)
 [![Project Scope](https://img.shields.io/badge/Project-Academic%20College%20FYP-informational.svg)](https://github.com/fat2004med/smartfyp_project)
 
 **SmartFYP** is a modern, production-grade enterprise web application engineered specifically for colleges, universities, and academic departments to orchestrate, evaluate, and archive undergraduate Final Year Projects (FYP) and capstone theses.
 
 Built with a unified **Express + React 19 SPA** architecture, SmartFYP streamlines the entire capstone lifecycle—from project ideation and team formation to multi-tier hierarchical approvals, task sprint tracking, dual-engine document plagiarism scanning, and public digital repository publishing.
+
+> [!TIP]
+> **🌐 Live Deployed Application**:
+> - **Live URL**: [https://smartfypproject-production.up.railway.app](https://smartfypproject-production.up.railway.app)
+> - **Hosting Platform**: Railway Cloud PaaS (30-Day Free Trial Tier)
+> - **Trial Expiration**: Valid through **16 September 2026** (trial period active). All pre-configured evaluation accounts can be logged in directly on the live deployment using `Password@123`.
 
 ---
 
@@ -467,7 +474,7 @@ The microservice will run on **`http://127.0.0.1:5000`**. The Node.js server aut
 > All user accounts currently saved in the database are configured with the secure universal password:
 > **`Password@123`** *(Capital `P`, `@`, `123` — fully compliant with enterprise complexity rules)*.
 > 
-> Passwords are cryptographically hashed using **`bcryptjs` (10 salt rounds)**. When logging in via the web portal, ensure you select the appropriate **Role Tab** corresponding to the account.
+> Passwords are cryptographically hashed using **`bcryptjs` (10 salt rounds)**. When logging in via the live portal at **[https://smartfypproject-production.up.railway.app](https://smartfypproject-production.up.railway.app)** *(Railway free trial active through 16 September 2026)* or your local server, ensure you select the appropriate **Role Tab** corresponding to the account.
 
 ---
 
@@ -681,6 +688,17 @@ npm run lint
 ---
 
 ## Deployment Guide
+
+### Live Active Deployment (Railway.app)
+
+The application is currently live and deployed on **Railway Cloud PaaS**:
+
+* **Production URL**: [https://smartfypproject-production.up.railway.app](https://smartfypproject-production.up.railway.app)
+* **Tier**: Railway 30-Day Free Trial Tier
+* **Active Status / Validity**: Active through **16 September 2026** (30-day trial window)
+* **Architecture**: Production containerized Node.js runtime connected to remote MongoDB Atlas cloud cluster with persistent storage and live REST endpoints.
+
+---
 
 ### Option 1: Cloud Run / Docker Container (Recommended)
 

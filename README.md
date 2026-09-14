@@ -462,25 +462,104 @@ The microservice will run on **`http://127.0.0.1:5000`**. The Node.js server aut
 
 ## Demo Accounts & Evaluation Profiles
 
-> [!WARNING]
-> **Production Security Notice:**
-> The following accounts are intended for local development and academic evaluation. In any public or production deployment, **all default passwords must be changed immediately** or seeded via secure environment configuration.
+> [!NOTE]
+> **Universal Password for Academic Evaluation:**
+> All user accounts currently saved in the database are configured with the secure universal password:
+> **`Password@123`** *(Capital `P`, `@`, `123` — fully compliant with enterprise complexity rules)*.
+> 
+> Passwords are cryptographically hashed using **`bcryptjs` (10 salt rounds)**. When logging in via the web portal, ensure you select the appropriate **Role Tab** corresponding to the account.
 
-| Role | Name | Email | Default Password | Role Scope |
+---
+
+### 🎓 Quick Evaluation Profiles for Project Testing
+
+For evaluating live project workflows, progress tracking, document approvals, and repository publishing, test with these dedicated user sets:
+
+#### 🟢 Scenario 1: Completed & Published Project ("SmartFYP")
+*Use these credentials to view the full lifecycle of an approved, completed, and publicly published Final Year Project, including thesis documents, HOD/Supervisor approvals, grades, and public showcase status.*
+
+| Role Tab | Role | Name | Email | Password | Department |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Admin** | Admin | Fatima | `fat2004med@gmail.com` | `Password@123` | Global System Admin |
+| **HOD** | HOD | Prof Imran Bin Naseer | `fatimaabdulrehman2010210@gmail.com` | `Password@123` | Data Science |
+| **Supervisor** | Supervisor | Prof M Yahya | `yahyaabdulrehman2013@gmail.com` | `Password@123` | Data Science |
+| **Team Leader** | Team Leader | Minahil | `shaheenabdulrahman1973@gmail.com` | `Password@123` | Data Science |
+| **Team Member** | Team Member | Umer | `shaheenbintnazir@gmail.com` | `Password@123` | Data Science |
+| **Team Member** | Team Member | Zaman | `abdulrehmanabid1980@gmail.com` | `Password@123` | Data Science |
+
+#### 🟡 Scenario 2: Active & In-Progress Project ("AI-Powered Resume Screening")
+*Use these credentials to inspect active project deliverables, ongoing sprint assignments, submission evaluations, supervisor feedback, and pending approval workflows.*
+
+| Role Tab | Role | Name | Email | Password | Department |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **HOD** | HOD | Prof Mohtashim | `hodsmartfyp@gmail.com` | `Password@123` | Information Technology |
+| **Supervisor** | Supervisor | Ahmed | `suprvisor1smartfyp@gmail.com` | `Password@123` | Information Technology |
+| **Team Leader** | Team Leader | Noor | `leader2smartfyp@gmail.com` | `Password@123` | Information Technology |
+| **Team Member** | Team Member | Aryan | `member1smartfyp@gmail.com` | `Password@123` | Information Technology |
+
+---
+
+### Complete Accounts Directory by Role
+
+### System Administrators (College Admin)
+| Role | Name | Email | Password | Department / Scope |
 | :--- | :--- | :--- | :--- | :--- |
-| **System Administrator** | Dr. John Doe | `admin@smartfyp.edu` | `password123` | Global System Admin |
-| **HOD (Computer Science)** | Dr. Arshad Khan | `hod.cs@smartfyp.edu` | `password123` | Department Head |
-| **HOD (Software Engineering)** | Dr. Sarah Jenkins | `hod.se@smartfyp.edu` | `password123` | Department Head |
-| **Project Supervisor** | Dr. Tariq Mahmood | `supervisor.ai@smartfyp.edu` | `password123` | Faculty Advisor |
-| **Project Supervisor** | Prof. Ayesha Malik | `supervisor.web@smartfyp.edu` | `password123` | Faculty Advisor |
-| **Project Supervisor** | Dr. Bilal Ahmed | `supervisor.cyber@smartfyp.edu` | `password123` | Faculty Advisor |
-| **Student Team Leader** | Hamza Ali | `leader.cs@smartfyp.edu` | `password123` | Team Lead (CS) |
-| **Student Team Member** | Zainab Fatima | `member1.cs@smartfyp.edu` | `password123` | Team Member (CS) |
-| **Student Team Member** | Usman Tariq | `member2.cs@smartfyp.edu` | `password123` | Team Member (CS) |
-| **Student Team Leader** | Bilal Raza | `leader.se@smartfyp.edu` | `password123` | Team Lead (SE) |
-| **Student Team Member** | Mahnoor Khan | `member1.se@smartfyp.edu` | `password123` | Team Member (SE) |
-| **Student Team Leader** | Saad Siddiqui | `leader.ai@smartfyp.edu` | `password123` | Team Lead (AI) |
-| **Student Team Leader** | Farhan Qureshi | `leader.cy@smartfyp.edu` | `password123` | Team Lead (Cyber) |
+| **Admin** | Fatima | `fat2004med@gmail.com` | `Password@123` | Global System Admin |
+| **Admin** | User Admin | `fatp2010210@gmail.com` | `Password@123` | Global System Admin |
+| **Admin** | Shaheen Abdulrahman | `shaheenabdulrahman@gmail.com` | `Password@123` | Global System Admin |
+| **Admin** | Dr. John Doe | `admin@smartfyp.edu` | `Password@123` | Global System Admin |
+
+### Heads of Department (HOD)
+| Role | Name | Email | Password | Department |
+| :--- | :--- | :--- | :--- | :--- |
+| **HOD, Supervisor** | Prof Imran Bin Naseer | `fatimaabdulrehman2010210@gmail.com` | `Password@123` | Data Science |
+| **HOD, Supervisor** | Prof M Yahya | `yahyaabdulrehman2013@gmail.com` | `Password@123` | Data Science |
+| **HOD, Supervisor** | Prof Mohtashim | `hodsmartfyp@gmail.com` | `Password@123` | Information Technology |
+| **HOD, Supervisor** | Dr. Ahmed | `hod_cs@smartfyp.com` | `Password@123` | Computer Science |
+| **HOD** | Dr. Maria | `hod@smartfyp.com` | `Password@123` | Software Engineering |
+| **HOD, Supervisor** | Dr. Arshad Khan | `hod.cs@smartfyp.edu` | `Password@123` | Computer Science |
+| **HOD** | Dr. Sarah Jenkins | `hod.se@smartfyp.edu` | `Password@123` | Software Engineering |
+| **HOD** | Dr. Kamran Malik | `hod.ai@smartfyp.edu` | `Password@123` | Artificial Intelligence |
+| **HOD** | Dr. Usman Khalid | `hod.cyber@smartfyp.edu` | `Password@123` | Cyber Security |
+
+### Project Supervisors (Faculty Advisors)
+| Role | Name | Email | Password | Department |
+| :--- | :--- | :--- | :--- | :--- |
+| **Supervisor** | Prof Ayesha | `supervisorsmartfyp@gmail.com` | `Password@123` | Data Science |
+| **Supervisor** | Ahmed | `suprvisor1smartfyp@gmail.com` | `Password@123` | Information Technology |
+| **Supervisor** | Ali | `aliofficial2004med@gmail.com` | `Password@123` | Information Technology |
+| **Supervisor** | Prof. John | `supervisor@smartfyp.com` | `Password@123` | Computer Science |
+| **Supervisor** | Prof. Wilson | `wilson@smartfyp.com` | `Password@123` | Software Engineering |
+| **Supervisor** | Dr. Tariq Mahmood | `supervisor.ai@smartfyp.edu` | `Password@123` | Artificial Intelligence |
+| **Supervisor** | Prof. Ayesha Malik | `supervisor.web@smartfyp.edu` | `Password@123` | Software Engineering |
+| **Supervisor** | Dr. Bilal Ahmed | `supervisor.cyber@smartfyp.edu` | `Password@123` | Cyber Security |
+
+### Student Team Leaders
+| Role | Name | Email | Password | Department |
+| :--- | :--- | :--- | :--- | :--- |
+| **Team Leader** | Minahil | `shaheenabdulrahman1973@gmail.com` | `Password@123` | Data Science |
+| **Team Leader** | Sumaira | `leadersmartfyp@gmail.com` | `Password@123` | Data Science |
+| **Team Leader** | Aryan | `leader1smartfyp@gmail.com` | `Password@123` | Data Science |
+| **Team Leader** | Noor | `leader2smartfyp@gmail.com` | `Password@123` | Information Technology |
+| **Team Leader** | Alice Smith | `leader@smartfyp.com` | `Password@123` | Computer Science |
+| **Team Leader** | Hamza Ali | `leader.cs@smartfyp.edu` | `Password@123` | Computer Science |
+| **Team Leader** | Bilal Raza | `leader.se@smartfyp.edu` | `Password@123` | Software Engineering |
+| **Team Leader** | Saad Siddiqui | `leader.ai@smartfyp.edu` | `Password@123` | Artificial Intelligence |
+| **Team Leader** | Farhan Qureshi | `leader.cy@smartfyp.edu` | `Password@123` | Cyber Security |
+
+### Student Team Members
+| Role | Name | Email | Password | Department |
+| :--- | :--- | :--- | :--- | :--- |
+| **Team Member** | Umer | `shaheenbintnazir@gmail.com` | `Password@123` | Data Science |
+| **Team Member** | Zaman | `abdulrehmanabid1980@gmail.com` | `Password@123` | Data Science |
+| **Team Member** | Zara | `membersmartfyp@gmail.com` | `Password@123` | Data Science |
+| **Team Member** | Aryan | `member1smartfyp@gmail.com` | `Password@123` | Information Technology |
+| **Team Member** | Maneeha | `member2smartfyp@gmail.com` | `Password@123` | Data Science |
+| **Team Member** | Bob Jones | `member@smartfyp.com` | `Password@123` | Computer Science |
+| **Team Member** | Zainab Fatima | `member1.cs@smartfyp.edu` | `Password@123` | Computer Science |
+| **Team Member** | Usman Tariq | `member2.cs@smartfyp.edu` | `Password@123` | Computer Science |
+| **Team Member** | Mahnoor Khan | `member1.se@smartfyp.edu` | `Password@123` | Software Engineering |
+| **Team Member** | Daniyal Ahmed | `member2.se@smartfyp.edu` | `Password@123` | Software Engineering |
 
 ---
 
@@ -656,7 +735,7 @@ Before pushing this repository to a public GitHub repository, verify the followi
 
 1. **Verify `.gitignore` protects secrets**: Ensure `.env` is listed in your `.gitignore` so your real MongoDB URI, JWT secret, and email credentials are not committed to git history.
 2. **Never commit raw API keys or passwords**: Confirm `.env` is NOT tracked using `git status`. Only commit `.env.example` with blank or dummy values.
-3. **Change default database passwords**: If deploying to a public server or using an existing live database, update or reset all pre-seeded evaluation passwords (`password123`).
+3. **Change default database passwords**: If deploying to a public server or using an existing live database, update or reset all pre-seeded evaluation passwords (`Password@123`).
 4. **Scrub test files and uploads**: Verify that the `uploads/` directory does not contain sensitive personal student documents before committing.
 5. **Protect your production branches**: If using GitHub Actions, store all credentials as encrypted GitHub Repository Secrets (`MONGO_URI`, `JWT_SECRET`, etc.).
 

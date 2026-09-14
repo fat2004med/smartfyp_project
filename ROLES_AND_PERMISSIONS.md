@@ -1,6 +1,6 @@
 # SmartFYP: Role-Based Access Control (RBAC) & CRUD Permissions Specification
 
-This document provides a formal, comprehensive reference of all roles, permissions, workflow privileges, and CRUD (Create, Read, Update, Delete) capabilities within the **SmartFYP** (Final Year Project Management System). It is structured for academic presentations, system audits, and examiner evaluations.
+This document provides a formal, comprehensive reference of all roles, permissions, workflow privileges, and CRUD (Create, Read, Update, Delete) capabilities within the **SmartFYP** (Final Year Project Management System). It is structured for institutional reviews, system audits, and technical evaluations.
 
 ---
 
@@ -305,4 +305,37 @@ $$\text{Team Member} \longrightarrow \text{Team Leader} \longrightarrow \text{Su
 
 ---
 
+## 5. Live Demonstration Accounts & Evaluation Profiles
+
+For system audits, workflow demonstrations, and verifying dashboard capabilities across roles, use the following pre-configured evaluation accounts:
+
+> [!IMPORTANT]
+> **Universal Evaluation Password**: **`Password@123`** *(Capital `P`, `@`, `123`)* across all roles.  
+> Authentication uses **`bcryptjs` (10 salt rounds)**. Always select the appropriate **Role Tab** on the login screen.
+
+### 🟢 Scenario 1: Completed & Published Project ("SmartFYP")
+*Verify the full lifecycle of a completed and publicly published Final Year Project, including thesis documents, HOD/Supervisor approvals, grades, and public showcase status.*
+
+| Role Tab | Role | Name | Email | Password | Department Scope |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Admin** | Admin | Fatima | `fat2004med@gmail.com` | `Password@123` | Institution-Wide (Admin) |
+| **HOD** | HOD | Prof Imran Bin Naseer | `fatimaabdulrehman2010210@gmail.com` | `Password@123` | Data Science (HOD) |
+| **Supervisor** | Supervisor | Prof M Yahya | `yahyaabdulrehman2013@gmail.com` | `Password@123` | Data Science (Advisor) |
+| **Team Leader** | Team Leader | Minahil | `shaheenabdulrahman1973@gmail.com` | `Password@123` | Data Science (Lead) |
+| **Team Member** | Team Member | Umer | `shaheenbintnazir@gmail.com` | `Password@123` | Data Science (Member) |
+| **Team Member** | Team Member | Zaman | `abdulrehmanabid1980@gmail.com` | `Password@123` | Data Science (Member) |
+
+### 🟡 Scenario 2: Active & In-Progress Project ("AI-Powered Resume Screening")
+*Verify active project deliverables, ongoing sprint assignments, submission evaluations, supervisor feedback, and pending approval workflows.*
+
+| Role Tab | Role | Name | Email | Password | Department Scope |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **HOD** | HOD | Prof Mohtashim | `hodsmartfyp@gmail.com` | `Password@123` | Information Technology |
+| **Supervisor** | Supervisor | Ahmed | `suprvisor1smartfyp@gmail.com` | `Password@123` | Information Technology |
+| **Team Leader** | Team Leader | Noor | `leader2smartfyp@gmail.com` | `Password@123` | Information Technology |
+| **Team Member** | Team Member | Aryan | `member1smartfyp@gmail.com` | `Password@123` | Information Technology |
+
+---
+
 *Document compiled for the SmartFYP Final Year Project Management System.*
+

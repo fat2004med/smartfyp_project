@@ -19,8 +19,8 @@ Built with a unified **Express + React 19 SPA** architecture, SmartFYP streamlin
 > [!TIP]
 > **🌐 Live Deployed Application**:
 > - **Live URL**: [https://smartfypproject-production.up.railway.app](https://smartfypproject-production.up.railway.app)
-> - **Hosting Platform**: Railway Cloud PaaS (30-Day Free Trial Tier)
-> - **Trial Expiration**: Valid through **16 September 2026** (trial period active). All pre-configured evaluation accounts can be logged in directly on the live deployment using `Password@123`.
+> - **Hosting Platform**: Railway Cloud PaaS (Hobby Plan with monthly usage credit)
+> - **Availability**: Active & running continuously. All pre-configured evaluation accounts can be logged in directly on the live deployment using `Password@123`.
 
 ---
 
@@ -474,7 +474,7 @@ The microservice will run on **`http://127.0.0.1:5000`**. The Node.js server aut
 > All user accounts currently saved in the database are configured with the secure universal password:
 > **`Password@123`** *(Capital `P`, `@`, `123` — fully compliant with enterprise complexity rules)*.
 > 
-> Passwords are cryptographically hashed using **`bcryptjs` (10 salt rounds)**. When logging in via the live portal at **[https://smartfypproject-production.up.railway.app](https://smartfypproject-production.up.railway.app)** *(Railway free trial active through 16 September 2026)* or your local server, ensure you select the appropriate **Role Tab** corresponding to the account.
+> Passwords are cryptographically hashed using **`bcryptjs` (10 salt rounds)**. When logging in via the live portal at **[https://smartfypproject-production.up.railway.app](https://smartfypproject-production.up.railway.app)** or your local server, ensure you select the appropriate **Role Tab** corresponding to the account.
 
 ---
 
@@ -694,8 +694,8 @@ npm run lint
 The application is currently live and deployed on **Railway Cloud PaaS**:
 
 * **Production URL**: [https://smartfypproject-production.up.railway.app](https://smartfypproject-production.up.railway.app)
-* **Tier**: Railway 30-Day Free Trial Tier
-* **Active Status / Validity**: Active through **16 September 2026** (30-day trial window)
+* **Tier**: Railway Hobby Plan (includes $5 monthly usage credit, renewed automatically each month)
+* **Status**: Active and running continuously with automated health checks
 * **Architecture**: Production containerized Node.js runtime connected to remote MongoDB Atlas cloud cluster with persistent storage and live REST endpoints.
 
 ---

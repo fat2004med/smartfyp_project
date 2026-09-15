@@ -312,7 +312,7 @@ For system audits, workflow demonstrations, and verifying dashboard capabilities
 > [!IMPORTANT]
 > **Universal Evaluation Password**: **`Password@123`** *(Capital `P`, `@`, `123`)* across all roles.  
 > Authentication uses **`bcryptjs` (10 salt rounds)**. Always select the appropriate **Role Tab** on the login screen.
-> Live deployment portal: **[https://smartfypproject-production.up.railway.app](https://smartfypproject-production.up.railway.app)** *(Railway 30-day free trial tier, active through 16 September 2026)*.
+> Live deployment portal: **[https://smartfypproject-production.up.railway.app](https://smartfypproject-production.up.railway.app)** *(Hosted on Railway Cloud PaaS)*.
 
 ### 🟢 Scenario 1: Completed & Published Project ("SmartFYP")
 *Verify the full lifecycle of a completed and publicly published Final Year Project, including thesis documents, HOD/Supervisor approvals, grades, and public showcase status.*

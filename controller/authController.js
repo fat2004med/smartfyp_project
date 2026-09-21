@@ -205,12 +205,8 @@ export const forgotPassword = async (req, res) => {
       success: true,
       message: emailSent 
         ? "Password reset link sent to your email inbox." 
-        : "Password reset link generated. If email delivery is unavailable in your environment, use the direct reset link.",
-      resetUrl,
-      token: resetToken,
-      emailSent,
-      emailError: emailSent ? null : emailErrorMessage,
-      devInfo: `Reset Link: ${resetUrl}`
+        : "Password reset request received. Please check your email for the reset link.",
+      emailSent
     });
   } catch (error) {
     console.error("[ForgotPassword] Error:", error);

@@ -45,12 +45,8 @@ const UserManagement = () => {
   const [statusConfirmData, setStatusConfirmData] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Direct Password Reset Modal State (Solution 2)
-  const [resetModalUser, setResetModalUser] = useState(null);
-  const [temporaryPassword, setTemporaryPassword] = useState('Password123!');
-  const [requireChangeOnLogin, setRequireChangeOnLogin] = useState(true);
-  const [resetSuccessData, setResetSuccessData] = useState(null);
-  const [copiedPass, setCopiedPass] = useState(false);
+  // Send Password Reset Email Modal / Confirmation State
+  const [resetEmailUser, setResetEmailUser] = useState(null);
 
   // Created User / Welcome Credentials Modal State
   const [createdUserResult, setCreatedUserResult] = useState(null);
@@ -256,42 +252,27 @@ const UserManagement = () => {
     }
   };
 
-  const openResetPasswordModal = (user) => {
-    setResetModalUser(user);
-    setTemporaryPassword('Password123!');
-    setRequireChangeOnLogin(true);
-    setResetSuccessData(null);
-    setCopiedPass(false);
-  };
-
-  const handleDirectPasswordReset = async (e) => {
-    e.preventDefault();
-    if (!resetModalUser) return;
-    setSubmittingId('direct-reset');
+  const handleSendResetLink = async (userToSend) => {
+    const targetUser = userToSend || resetEmailUser;
+    if (!targetUser) return;
+    setSubmittingId(`send-reset-${targetUser._id}`);
     try {
-      const { data } = await api.post(`/api/users/${resetModalUser._id}/reset-password`, {
-        newPassword: temporaryPassword,
-        requirePasswordChange: requireChangeOnLogin,
+      const { data } = await api.post('/api/auth/forgotPassword', {
+        email: targetUser.email,
         origin: window.location.origin
       });
-      setResetSuccessData(data);
-      toast.success(data.message || 'Password reset successfully!');
-      fetchUsers();
+      if (data.emailSent) {
+        toast.success(`Password reset email sent to ${targetUser.email}!`);
+      } else {
+        toast.success(data.message || `Password reset link generated for ${targetUser.email}`);
+      }
+      setResetEmailUser(null);
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to reset user password';
+      const msg = err.response?.data?.message || 'Failed to send password reset email';
       toast.error(msg);
     } finally {
       setSubmittingId(null);
     }
-  };
-
-  const generateRandomPassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
-    let result = 'Pass@';
-    for (let i = 0; i < 6; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setTemporaryPassword(result + '1');
   };
 
   const openEditModal = (user) => {
@@ -474,12 +455,17 @@ const UserManagement = () => {
                           <Edit2 size={16} />
                         </button>
                         <button 
-                          onClick={() => openResetPasswordModal(user)}
-                          className="p-2.5 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all hover:scale-105 active:scale-95 shadow-sm border border-amber-100" 
-                          title="Direct Password Reset"
-                          id={`reset-pwd-user-${user._id}`}
+                          onClick={() => setResetEmailUser(user)}
+                          disabled={submittingId === `send-reset-${user._id}`}
+                          className="p-2.5 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all hover:scale-105 active:scale-95 shadow-sm border border-amber-100 disabled:opacity-50" 
+                          title="Send Password Reset Link via Email"
+                          id={`send-reset-link-user-${user._id}`}
                         >
-                          <KeyRound size={16} />
+                          {submittingId === `send-reset-${user._id}` ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Mail size={16} />
+                          )}
                         </button>
                         <button 
                           onClick={() => handleResendWelcome(user)}
@@ -870,18 +856,15 @@ const UserManagement = () => {
         )}
       </AnimatePresence>
 
-      {/* Direct Password Reset Modal (Solution 2) */}
+      {/* Password Reset via Email Confirmation Modal */}
       <AnimatePresence>
-        {resetModalUser && (
+        {resetEmailUser && (
           <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => {
-                setResetModalUser(null);
-                setResetSuccessData(null);
-              }}
+              onClick={() => setResetEmailUser(null)}
               className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
             />
             <motion.div
@@ -892,139 +875,65 @@ const UserManagement = () => {
             >
               <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 shadow-sm">
-                    <KeyRound size={20} />
+                  <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-sm">
+                    <Mail size={20} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">Reset User Password</h3>
-                    <p className="text-xs text-gray-500">Admin & HOD Override Tool</p>
+                    <h3 className="text-lg font-bold text-gray-900">Send Password Reset Link</h3>
+                    <p className="text-xs text-gray-500 font-medium">Secure Email-Only Verification</p>
                   </div>
                 </div>
                 <button
-                  onClick={() => {
-                    setResetModalUser(null);
-                    setResetSuccessData(null);
-                  }}
+                  onClick={() => setResetEmailUser(null)}
                   className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              {!resetSuccessData ? (
-                <form onSubmit={handleDirectPasswordReset} className="space-y-4">
-                  <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-2xl">
-                    <p className="text-xs text-blue-900 leading-relaxed font-medium">
-                      Resetting password for <strong className="text-blue-950 font-bold">{resetModalUser.name}</strong> (<span className="font-mono">{resetModalUser.email}</span>). You can provide this temporary password directly to the user.
-                    </p>
-                  </div>
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50/70 border border-blue-100 rounded-2xl text-xs text-blue-900 leading-relaxed space-y-2">
+                  <p>
+                    Passkeys and direct password overwrites are disabled for security.
+                  </p>
+                  <p>
+                    Clicking below will dispatch an official password reset link directly to <strong>{resetEmailUser.name}</strong> at <span className="font-mono font-semibold">{resetEmailUser.email}</span>. The user can securely update their password only by opening that link in their email inbox.
+                  </p>
+                </div>
 
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Temporary Password</label>
-                      <button
-                        type="button"
-                        onClick={generateRandomPassword}
-                        className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                      >
-                        <RefreshCw size={12} />
-                        Auto-generate
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        required
-                        value={temporaryPassword || ''}
-                        onChange={(e) => setTemporaryPassword(e.target.value)}
-                        placeholder="e.g. Password123!"
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-mono text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                      />
-                    </div>
-                    <p className="text-[11px] text-gray-400">Must be at least 6 characters with upper, lower, and number/symbol.</p>
-                  </div>
+                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between text-xs">
+                  <span className="text-gray-500 font-medium">User Role:</span>
+                  <span className="font-bold text-gray-800">{resetEmailUser.role}</span>
+                </div>
 
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      id="requireChangeCheckbox"
-                      checked={requireChangeOnLogin}
-                      onChange={(e) => setRequireChangeOnLogin(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <label htmlFor="requireChangeCheckbox" className="text-xs font-bold text-gray-700 cursor-pointer select-none">
-                      Force user to choose a new password upon their next login
-                    </label>
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setResetModalUser(null)}
-                      className="flex-1 px-4 py-3 border border-gray-200 text-gray-500 font-bold rounded-xl hover:bg-gray-50 transition-all text-sm"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submittingId === 'direct-reset'}
-                      className="flex-1 bg-amber-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-amber-700 transition-all shadow-lg shadow-amber-200 flex items-center justify-center gap-2 text-sm disabled:opacity-60"
-                    >
-                      {submittingId === 'direct-reset' ? (
-                        <>
-                          <Loader2 className="animate-spin" size={16} />
-                          Resetting...
-                        </>
-                      ) : (
-                        'Save & Reset Password'
-                      )}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="space-y-4">
-                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-2">
-                    <div className="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
-                      <CheckCircle2 size={24} />
-                    </div>
-                    <h4 className="font-bold text-emerald-950 text-base">Password Reset Successfully!</h4>
-                    <p className="text-xs text-emerald-800">
-                      The password for <strong>{resetModalUser.name}</strong> has been updated. An email has also been dispatched to <span className="font-semibold">{resetModalUser.email}</span>.
-                    </p>
-                  </div>
-
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Credentials to Share with User</span>
-                    <div className="flex items-center justify-between bg-white border border-gray-200 p-2.5 rounded-lg font-mono text-sm">
-                      <span className="text-gray-900 font-bold">{resetSuccessData.temporaryPassword}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(resetSuccessData.temporaryPassword);
-                          setCopiedPass(true);
-                          toast.success('Password copied to clipboard!');
-                          setTimeout(() => setCopiedPass(false), 2500);
-                        }}
-                        className="p-1.5 hover:bg-gray-100 rounded-md text-gray-600 transition-all flex items-center gap-1 text-xs font-bold font-sans"
-                      >
-                        {copiedPass ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-                        {copiedPass ? 'Copied' : 'Copy'}
-                      </button>
-                    </div>
-                  </div>
-
+                <div className="flex gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setResetModalUser(null);
-                      setResetSuccessData(null);
-                    }}
-                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md text-sm"
+                    onClick={() => setResetEmailUser(null)}
+                    className="flex-1 px-4 py-3 border border-gray-200 text-gray-500 font-bold rounded-xl hover:bg-gray-50 transition-all text-sm"
                   >
-                    Done
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSendResetLink(resetEmailUser)}
+                    disabled={submittingId === `send-reset-${resetEmailUser._id}`}
+                    className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2 text-sm disabled:opacity-60"
+                  >
+                    {submittingId === `send-reset-${resetEmailUser._id}` ? (
+                      <>
+                        <Loader2 className="animate-spin" size={16} />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={16} />
+                        Send Reset Link
+                      </>
+                    )}
                   </button>
                 </div>
-              )}
+              </div>
             </motion.div>
           </div>
         )}

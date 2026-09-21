@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { motion } from 'motion/react';
-import { Mail, ShieldCheck, AlertCircle, CheckCircle2, ChevronRight, LayoutDashboard, ArrowLeft, ExternalLink, KeyRound } from 'lucide-react';
+import { Mail, ShieldCheck, AlertCircle, CheckCircle2, ChevronRight, LayoutDashboard, ArrowLeft } from 'lucide-react';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -81,35 +81,9 @@ const ForgotPassword = () => {
                 )}
               </p>
 
-              {/* Direct Reset Action */}
-              {successData.token && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-2xl text-left space-y-3">
-                  <div className="flex items-center gap-2 text-blue-800 font-semibold text-xs uppercase tracking-wider">
-                    <KeyRound size={16} />
-                    <span>Instant Password Reset</span>
-                  </div>
-                  <p className="text-xs text-blue-700 leading-normal">
-                    You can reset your password immediately using the link below:
-                  </p>
-                  <button
-                    onClick={() => {
-                      if (successData.token) {
-                        navigate(`/reset-password?token=${encodeURIComponent(successData.token)}`);
-                      } else if (successData.resetUrl) {
-                        window.location.href = successData.resetUrl;
-                      }
-                    }}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition-all shadow-md shadow-blue-200 flex items-center justify-center gap-2"
-                  >
-                    <span>Proceed to Reset Password</span>
-                    <ExternalLink size={15} />
-                  </button>
-                </div>
-              )}
-
               <button 
                 onClick={() => navigate('/login')}
-                className="text-blue-600 font-bold hover:text-blue-700 underline underline-offset-4 text-sm"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl text-sm transition-all shadow-md shadow-blue-200"
               >
                 Return to Login
               </button>
